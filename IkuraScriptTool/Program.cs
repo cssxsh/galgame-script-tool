@@ -104,7 +104,7 @@ namespace IkuraScriptTool
                     }
                     
                     Console.WriteLine($"Write {path}_{_encoding.WebName}");
-                    using (var stream = File.OpenWrite($"{path}_{_encoding.WebName}"))
+                    using (var stream = File.Create($"{path}_{_encoding.WebName}"))
                     using (var writer = new BinaryWriter(stream))
                     {
                         writer.WriteIkuraScripts(scripts);
@@ -174,11 +174,6 @@ namespace IkuraScriptTool
             {
                 var bytes = scripts[i].ToBytes();
                 
-                writer.BaseStream.Position = offset;
-                writer.Write(bytes);
-                var empty = new byte[(bytes.Length + 0x0F) & 0xFFFF_FFF0u];
-                writer.Write(empty);
-                
                 writer.BaseStream.Position = 0x0000_0020 + i * 0x14;
                 Array.Clear(buffer, 0, buffer.Length); 
                 Encoding.ASCII.GetBytes(scripts[i].Name).CopyTo(buffer, 0); 
@@ -186,7 +181,11 @@ namespace IkuraScriptTool
                 writer.Write(offset);
                 writer.Write((uint)bytes.Length);
                 
+                writer.BaseStream.Position = offset;
+                writer.Write(bytes);
                 offset += (uint)(bytes.Length + 0x0F) & 0xFFFF_FFF0u;
+                var empty = new byte[offset - writer.BaseStream.Position];
+                writer.Write(empty);
             }
         }
 

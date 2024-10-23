@@ -128,6 +128,7 @@ namespace IkuraScriptTool
                     }
 
                     writer.Write(Commands[i].Value);
+                    position = (uint)stream.Position;
                 }
             }
 
