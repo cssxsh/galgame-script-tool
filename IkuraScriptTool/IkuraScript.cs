@@ -96,6 +96,7 @@ namespace IkuraScriptTool
                 size += (uint)(2 + command.Value.Length > 0x7F ? 3 : 2);
                 size += (uint)command.Value.Length;
             }
+
             var bytes = new byte[size];
             using (var stream = new MemoryStream(bytes))
             using (var writer = new BinaryWriter(stream))
@@ -230,8 +231,8 @@ namespace IkuraScriptTool
 
             return lines.ToArray();
         }
-        
-        public static void Encode(ref byte[] data, int index, byte[][] messages)
+
+        public static byte[] Encode(byte[] data, int index, byte[][] messages)
         {
             var last = index;
             var offset = index;
@@ -270,6 +271,7 @@ namespace IkuraScriptTool
                         {
                             buffer.Add(data[last]);
                         }
+
                         while (offset < data.Length)
                         {
                             switch (data[offset])
@@ -288,9 +290,10 @@ namespace IkuraScriptTool
                                 default:
                                     offset += data[offset] > 0x7F ? 2 : 1;
                                     break;
-                            } 
-                            last = offset;
+                            }
                         }
+
+                        last = offset;
 
                         for (var i = 0; i < messages[k].Length; i++)
                         {
@@ -307,17 +310,17 @@ namespace IkuraScriptTool
                                 continue;
                             }
 
-                            var t = (byte)0;
+                            var t = 0;
                             for (var j = 2; j < 0x7F * 2; j += 2)
                             {
                                 if (messages[k][i] != Kana[j] || messages[k][i + 1] != Kana[j + 1]) continue;
-                                t = (byte)(j / 2);
+                                t = j / 2;
                                 break;
                             }
 
                             if (t != 0)
                             {
-                                buffer.Add(t);
+                                buffer.Add((byte)t);
                                 if (t == 0x5C) buffer.Add(0x00);
                             }
                             else
@@ -336,9 +339,10 @@ namespace IkuraScriptTool
                         break;
                 }
             }
-            
+
             Array.Resize(ref data, index + buffer.Count);
             buffer.CopyTo(data, index);
+            return data;
         }
 
         [SuppressMessage("ReSharper", "UnusedMember.Local")]

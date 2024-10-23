@@ -91,14 +91,14 @@ namespace IkuraScriptTool
                             var lines = translated[index] ?? Array.Empty<string>();
                             Array.Resize(ref lines, lines.Length + 1);
                             lines[lines.Length - 1] = text;
+                            translated[index] = lines;
                         }
                         
                         for (var i = 0; i < script.Commands.Length; i++)
                         {
                             if (translated[i] == null) continue;
                             var instruction = script.Commands[i].Key;
-                            var bytes = script.Commands[i].Value;
-                            Patch(instruction, ref bytes, translated[i]);
+                            var bytes = Patch(instruction, script.Commands[i].Value, translated[i]);
                             script.Commands[i] = new KeyValuePair<IkuraScript.Instruction,byte[]>(instruction, bytes);
                         }
                     }
@@ -217,7 +217,7 @@ namespace IkuraScriptTool
             }
         }
         
-        private static void Patch(IkuraScript.Instruction instruction, ref byte[] args, string[] lines)
+        private static byte[] Patch(IkuraScript.Instruction instruction, byte[] args, string[] lines)
         {
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
             switch (instruction)
@@ -240,7 +240,7 @@ namespace IkuraScriptTool
                 case IkuraScript.Instruction.PMP:
                 {
                     var messages = lines.Select(line => _encoding.GetBytes(line)).ToArray();
-                    IkuraScript.Encode(ref args, 1, messages);
+                    args = IkuraScript.Encode(args, 1, messages);
                 }
                     break;
                 case IkuraScript.Instruction.MSGBOX:
@@ -254,7 +254,7 @@ namespace IkuraScriptTool
                     if (args[1] == 0) break;
                 {
                     var messages = lines.Select(line => _encoding.GetBytes(line)).ToArray();
-                    IkuraScript.Encode(ref args, 2, messages);
+                    args = IkuraScript.Encode(args, 2, messages);
                 }
                     break;
                 case IkuraScript.Instruction.SETGAMEINFO:
@@ -264,7 +264,11 @@ namespace IkuraScriptTool
                     bytes.CopyTo(args, 0);
                 }
                     break;
+                default:
+                    throw new NotSupportedException($"Patch {instruction} is not supported");
             }
+
+            return args;
         }
 
         private static byte[] TrimEnd(this byte[] source)
