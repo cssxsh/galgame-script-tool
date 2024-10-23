@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace IkuraScriptTool
+namespace Ikura
 {
     internal static class Program
     {

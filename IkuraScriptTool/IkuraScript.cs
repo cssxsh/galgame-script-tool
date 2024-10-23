@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
-namespace IkuraScriptTool
+namespace Ikura
 {
     public readonly struct IkuraScript
     {
