@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using ATool;
 
 namespace Ikura
 {
@@ -143,7 +144,7 @@ namespace Ikura
             for (var i = 0; i < count; i++)
             {
                 reader.BaseStream.Position = offset + i * 0x14;
-                var name = _encoding.GetString(reader.ReadBytes(12).TrimEnd());
+                var name = _encoding.GetString(reader.ReadBytes(0x0C).TrimEnd());
                 var pos = reader.ReadInt32();
                 var size = reader.ReadInt32();
                 
@@ -269,19 +270,6 @@ namespace Ikura
             }
 
             return args;
-        }
-
-        private static byte[] TrimEnd(this byte[] source)
-        {
-            var target = (byte[])source.Clone();
-            for (var i = 0; i < source.Length; i++)
-            {
-                if (source[i] != 0x00) continue;
-                Array.Resize(ref target, i);
-                break;
-            }
-
-            return target;
         }
     }
 }

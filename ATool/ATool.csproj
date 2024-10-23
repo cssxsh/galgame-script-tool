@@ -5,14 +5,13 @@
     <PropertyGroup>
         <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
         <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-        <ProjectGuid>{B78A8C91-7F4B-40A0-94E8-76B4F357677E}</ProjectGuid>
-        <OutputType>Exe</OutputType>
+        <ProjectGuid>{EE21073F-F233-46BE-913B-1B760E2DF7B8}</ProjectGuid>
+        <OutputType>Library</OutputType>
         <AppDesignerFolder>Properties</AppDesignerFolder>
-        <RootNamespace>Ikura</RootNamespace>
-        <AssemblyName>IkuraScriptTool</AssemblyName>
+        <RootNamespace>ATool</RootNamespace>
+        <AssemblyName>ATool</AssemblyName>
         <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
         <FileAlignment>512</FileAlignment>
-        <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
         <PlatformTarget>AnyCPU</PlatformTarget>
@@ -40,15 +39,8 @@
         <Reference Include="System.Xml"/>
     </ItemGroup>
     <ItemGroup>
-        <Compile Include="IkuraScript.cs" />
-        <Compile Include="Program.cs"/>
+        <Compile Include="ATool.cs" />
         <Compile Include="Properties\AssemblyInfo.cs"/>
-    </ItemGroup>
-    <ItemGroup>
-      <ProjectReference Include="..\ATool\ATool.csproj">
-        <Project>{ee21073f-f233-46be-913b-1b760e2df7b8}</Project>
-        <Name>ATool</Name>
-      </ProjectReference>
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/>
     <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
