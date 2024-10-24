@@ -248,8 +248,11 @@ namespace Ikura
                 case IkuraScript.Instruction.MSGBOX:
                 {
                     var bytes = _encoding.GetBytes(lines.Single());
-                    Array.Resize(ref args, 4 + bytes.Length + 1);
+                    var end = args.Last();
+                    Array.Resize(ref args, 4 + bytes.Length + 2);
                     bytes.CopyTo(args, 4);
+                    args[4 + bytes.Length] = 0x00;
+                    args[4 + bytes.Length + 1] = end;
                 }
                     break;
                 case IkuraScript.Instruction.MPM:
@@ -264,6 +267,7 @@ namespace Ikura
                     var bytes = _encoding.GetBytes(lines.Single());
                     Array.Resize(ref args, 0 + bytes.Length + 1);
                     bytes.CopyTo(args, 0);
+                    args[0 + bytes.Length] = 0x00;
                 }
                     break;
                 default:
