@@ -68,7 +68,7 @@ namespace Ikura
                     }
 
                     break;
-                case "-p":
+                case "-i":
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream))
@@ -79,7 +79,7 @@ namespace Ikura
                     foreach (var script in scripts)
                     {
                         if (!File.Exists($"{path}~/{script.Name}.txt")) continue;
-                        Console.WriteLine($"Patch {script.Name}");
+                        Console.WriteLine($"Import {script.Name}");
                         var translated = new string[script.Commands.Length][];
                         foreach (var line in File.ReadLines($"{path}~/{script.Name}.txt"))
                         {
@@ -99,13 +99,14 @@ namespace Ikura
                         {
                             if (translated[i] == null) continue;
                             var instruction = script.Commands[i].Key;
-                            var bytes = Patch(instruction, script.Commands[i].Value, translated[i]);
+                            var bytes = Import(instruction, script.Commands[i].Value, translated[i]);
                             script.Commands[i] = new KeyValuePair<IkuraScript.Instruction,byte[]>(instruction, bytes);
                         }
                     }
                     
-                    Console.WriteLine($"Write {path}_{_encoding.WebName}");
-                    using (var stream = File.Create($"{path}_{_encoding.WebName}"))
+                    var filename = $"{path}_{_encoding.WebName}";
+                    Console.WriteLine($"Write {filename}");
+                    using (var stream = File.Create(filename))
                     using (var writer = new BinaryWriter(stream))
                     {
                         writer.WriteIkuraScripts(scripts);
@@ -115,8 +116,8 @@ namespace Ikura
                 default:
                     Array.Resize(ref scripts, 0);
                     Console.WriteLine("Usage:");
-                    Console.WriteLine("  Export text  : IkuraScriptTool -e [ISF] [encoding]");
-                    Console.WriteLine("  Patch script : IkuraScriptTool -p [ISF] [encoding]");
+                    Console.WriteLine("  Export text : IkuraScriptTool -e [ISF] [encoding]");
+                    Console.WriteLine("  Import text : IkuraScriptTool -i [ISF] [encoding]");
                     Console.WriteLine("Press any key to continue...");
                     Console.ReadKey();
                     return;
@@ -218,7 +219,7 @@ namespace Ikura
             }
         }
         
-        private static byte[] Patch(IkuraScript.Instruction instruction, byte[] args, string[] lines)
+        private static byte[] Import(IkuraScript.Instruction instruction, byte[] args, string[] lines)
         {
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
             switch (instruction)
@@ -266,7 +267,7 @@ namespace Ikura
                 }
                     break;
                 default:
-                    throw new NotSupportedException($"Patch {instruction} is not supported");
+                    throw new NotSupportedException($"Import {instruction} is not supported");
             }
 
             return args;
