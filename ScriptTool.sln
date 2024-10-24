@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IkuraScriptTool", "IkuraScriptTool\IkuraScriptTool.csproj", "{B78A8C91-7F4B-40A0-94E8-76B4F357677E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SystemEpsylonScriptTool", "SystemEpsylonScriptTool\SystemEpsylonScriptTool.csproj", "{4C72D2C2-BC85-4A75-8A99-AE3AEA020D2C}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ATool", "ATool\ATool.csproj", "{EE21073F-F233-46BE-913B-1B760E2DF7B8}"
 EndProject
 Global
@@ -14,6 +16,10 @@ Global
 		{B78A8C91-7F4B-40A0-94E8-76B4F357677E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B78A8C91-7F4B-40A0-94E8-76B4F357677E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B78A8C91-7F4B-40A0-94E8-76B4F357677E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4C72D2C2-BC85-4A75-8A99-AE3AEA020D2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4C72D2C2-BC85-4A75-8A99-AE3AEA020D2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4C72D2C2-BC85-4A75-8A99-AE3AEA020D2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4C72D2C2-BC85-4A75-8A99-AE3AEA020D2C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{EE21073F-F233-46BE-913B-1B760E2DF7B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EE21073F-F233-46BE-913B-1B760E2DF7B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EE21073F-F233-46BE-913B-1B760E2DF7B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
