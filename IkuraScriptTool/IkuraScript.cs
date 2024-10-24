@@ -186,11 +186,13 @@ namespace Ikura
                         buffer.Clear();
                         while (offset < data.Length)
                         {
+                            if (data[offset] == 0x00)
+                            {
+                                offset++;
+                                break;
+                            }
                             switch (data[offset])
                             {
-                                case 0x00:
-                                    offset = data.Length;
-                                    continue;
                                 case 0x5C:
                                     buffer.Add(Kana[0xB8]);
                                     offset += 1;
