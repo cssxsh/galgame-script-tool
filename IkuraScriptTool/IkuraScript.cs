@@ -233,12 +233,13 @@ namespace Ikura
 
         public static byte[] Encode(byte[] data, int index, byte[][] messages)
         {
-            var last = index;
             var offset = index;
             var buffer = new List<byte>();
             var k = 0;
             while (offset < data.Length)
             {
+                var pos = offset;
+
                 switch (data[offset])
                 {
                     case 0x01:
@@ -266,23 +267,17 @@ namespace Ikura
                         break;
                     case 0xFF:
                         offset += 1;
-                        for (; last < offset; last++)
-                        {
-                            buffer.Add(data[last]);
-                        }
 
                         while (offset < data.Length)
                         {
+                            if (data[offset] == 0x00)
+                            {
+                                offset++;
+                                break;
+                            }
                             switch (data[offset])
                             {
-                                case 0x00:
-                                    offset += 1;
-                                    break;
                                 case 0x5C:
-                                    offset += 1;
-                                    if (data[offset] != 0x00) offset += 1;
-                                    offset += 1;
-                                    break;
                                 case 0x7F:
                                     offset += 2;
                                     break;
@@ -292,8 +287,8 @@ namespace Ikura
                             }
                         }
 
-                        last = offset;
-
+                        buffer.Add(0xFF);
+                        
                         for (var i = 0; i < messages[k].Length; i++)
                         {
                             if (messages[k][i] <= 0x7F)
@@ -324,15 +319,21 @@ namespace Ikura
 
                             i++;
                         }
+
                         buffer.Add(0x00);
 
                         k++;
-                        break;
+                        continue;
                     default:
                         offset += 1;
                         break;
                 }
-            }
+
+                for (var i = pos; i < offset; i++)
+                {
+                    buffer.Add(data[i]);
+                }
+            } 
 
             Array.Resize(ref data, index + buffer.Count);
             buffer.CopyTo(data, index);
