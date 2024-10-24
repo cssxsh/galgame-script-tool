@@ -189,8 +189,7 @@ namespace Ikura
                             switch (data[offset])
                             {
                                 case 0x00:
-                                    buffer.Add(0);
-                                    offset += 1;
+                                    offset = data.Length;
                                     continue;
                                 case 0x5C:
                                     buffer.Add(Kana[0xB8]);
@@ -297,12 +296,6 @@ namespace Ikura
 
                         for (var i = 0; i < messages[k].Length; i++)
                         {
-                            if (messages[k][i] == 0x00)
-                            {
-                                buffer.Add(0x00);
-                                continue;
-                            }
-
                             if (messages[k][i] <= 0x7F)
                             {
                                 buffer.Add(0x7F);
@@ -331,6 +324,7 @@ namespace Ikura
 
                             i++;
                         }
+                        buffer.Add(0x00);
 
                         k++;
                         break;
