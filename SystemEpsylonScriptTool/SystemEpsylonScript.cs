@@ -26,11 +26,6 @@ namespace SystemEpsylon
                 {
                     if (bytes.Length - i < 4) break;
                     var temp = BitConverter.ToUInt32(bytes, i) ^ key;
-                    if (Name == "A-20110.s")
-                    {
-                        Console.WriteLine($"{key:X8}");
-                        Console.WriteLine($"{temp:X8}");
-                    }
                     BitConverter.GetBytes(temp).CopyTo(bytes, i);
                     var move = (int)(temp % 24) & 0x1F;
                     key = key << move | key >> (32 - move);
@@ -161,11 +156,6 @@ namespace SystemEpsylon
                 {
                     if (bytes.Length - i < 4) break;
                     var temp = BitConverter.ToUInt32(bytes, i);
-                    if (Name == "A-20110.s")
-                    {
-                        Console.WriteLine($"{key:X8}");
-                        Console.WriteLine($"{temp:X8}");
-                    }
                     BitConverter.GetBytes(temp ^ key).CopyTo(bytes, i);
                     var move = (int)(temp % 24) & 0x1F;
                     key = key << move | key >> (32 - move);
