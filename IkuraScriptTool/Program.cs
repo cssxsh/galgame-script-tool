@@ -17,17 +17,31 @@ namespace Ikura
             switch (args.Length)
             {
                 case 1:
-                    mode = args[0];
-                    _encoding = mode == "-e"
-                        ? Encoding.GetEncoding("SHIFT-JIS")
-                        : Encoding.GetEncoding("GBK");
+                    switch (args[0])
+                    {
+                        case "-e":
+                        case "-i":
+                            mode = args[0];
+                            break;
+                        default:
+                            if (File.Exists(args[0]))
+                            {
+                                mode = "-e";
+                                path = args[0];
+                                break;
+                            }
+                            if (Directory.Exists(args[0]))
+                            {
+                                mode = "-i";
+                                path = args[0].TrimEnd('~');
+                            }
+                            break;
+                    }
                     break;
                 case 2:
                     mode = args[0];
                     path = args[1];
-                    _encoding = mode == "-e"
-                        ? Encoding.GetEncoding("SHIFT-JIS")
-                        : Encoding.GetEncoding("GBK");
+                    _encoding = null;
                     break;
                 case 3:
                     mode = args[0];
@@ -40,6 +54,7 @@ namespace Ikura
             switch (mode)
             {
                 case "-e":
+                    _encoding = _encoding ?? Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream))
@@ -69,6 +84,7 @@ namespace Ikura
 
                     break;
                 case "-i":
+                    _encoding = _encoding ?? Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream))
