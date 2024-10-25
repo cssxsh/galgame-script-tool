@@ -210,7 +210,6 @@ namespace SystemEpsylon
                         count++;
                     }
 
-                    command.TrimEnd();
                     return _encoding.GetString(command, command[1], count);
                 default:
                     return null;
@@ -225,25 +224,15 @@ namespace SystemEpsylon
             {
                 case 0x00:
                     var bytes = _encoding.GetBytes(text);
-                    var count = 0;
-                    for (var i = command[1]; i < command.Length; i++)
+                    if (bytes.Length + 1 > command[3])
                     {
-                        if (command[i] == 0x00) break;
-                        count++;
+                        var size = (byte)((bytes.Length + 4) & 0xFFFF_FFFCu);
+                        command[3] = size;
+                        Array.Resize(ref command, command[1] + size);
                     }
 
-                    if (count < bytes.Length)
-                    {
-                        var diff = bytes.Length - count;
-                        var temp = new byte[diff + command[1] + command[3]];
-                        command.CopyTo(temp, 0);
-                        command.CopyTo(temp, diff);
-                        temp[3] = (byte)(diff + command[3]);
-                        command = temp;
-                    }
-                    
+                    Array.Clear(command, command[1], command[3]);
                     bytes.CopyTo(command, command[1]);
-                    command[command[1] + bytes.Length] = 0x00;
                     break;
                 default:
                     throw new NotSupportedException($"Import {command[0]:X2} is not supported");
