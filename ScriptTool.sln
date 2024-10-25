@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SystemEpsylonScriptTool", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ATool", "ATool\ATool.csproj", "{EE21073F-F233-46BE-913B-1B760E2DF7B8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AToolTest", "AToolTest\AToolTest.csproj", "{59FAD974-A8FB-4E95-B12E-13F9A40F68CF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{EE21073F-F233-46BE-913B-1B760E2DF7B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EE21073F-F233-46BE-913B-1B760E2DF7B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EE21073F-F233-46BE-913B-1B760E2DF7B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59FAD974-A8FB-4E95-B12E-13F9A40F68CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59FAD974-A8FB-4E95-B12E-13F9A40F68CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59FAD974-A8FB-4E95-B12E-13F9A40F68CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59FAD974-A8FB-4E95-B12E-13F9A40F68CF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
