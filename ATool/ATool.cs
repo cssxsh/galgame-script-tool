@@ -17,7 +17,7 @@ namespace ATool
             return target;
         }
 
-        public static string ReplaceGbkUnsupported(this string source)
+        public static string ReplaceGbkUnsupported(this string source, bool force = true)
         {
             var chars = source.ToCharArray();
             for (var i = 0; i < chars.Length; i++)
@@ -31,7 +31,7 @@ namespace ATool
                     '\u2287' => '\u25A1', // '⊇'
                     '\u2282' => '\u25A1', // '⊂'
                     '\u2283' => '\u25A1', // '⊃'
-                    '\u21D2' => '\u25A1', // '⇒'
+                    '\u21D2' => force ? '\u2192' : '\u25A1', // '⇒' => '→'
                     '\u21D4' => '\u25A1', // '⇔'
                     '\u2200' => '\u25A1', // '∀'
                     '\u2203' => '\u25A1', // '∃'
@@ -47,7 +47,7 @@ namespace ATool
                     '\u2020' => '\u25A1', // '†'
                     '\u2021' => '\u25A1', // '‡'
                     '\u00B6' => '\u25A1', // '¶'
-                    '\u25EF' => '\u3007', // '◯' => '〇'
+                    '\u25EF' => force ? '\u3007' : '\u25A1', // '◯' => '〇'
                     '\u246A' => '\u247E', // '⑪' => '⑾'
                     '\u246B' => '\u247F', // '⑫' => '⑿'
                     '\u246C' => '\u2480', // '⑬' => '⒀'
@@ -78,13 +78,13 @@ namespace ATool
                     '\u337B' => '\u25A1', // '㍻'
                     '\u301F' => '\u25A1', // '〟'
                     '\u33CD' => '\u25A1', // '㏍'
-                    '\u32A4' => '\u4E0A', // '㊤' => '上'
-                    '\u32A5' => '\u4E2D', // '㊥' => '中'
-                    '\u32A6' => '\u4E0B', // '㊦' => ‘下’
-                    '\u32A7' => '\u5DE6', // '㊧' => '左'
-                    '\u32A8' => '\u53F3', // '㊨' => '右'
-                    '\u3232' => '\u6709', // '㈲' => '有'
-                    '\u3239' => '\u4EE3', // '㈹' => '代'
+                    '\u32A4' => force ? '\u4E0A' : '\u25A1', // '㊤' => '上'
+                    '\u32A5' => force ? '\u4E2D' : '\u25A1', // '㊥' => '中'
+                    '\u32A6' => force ? '\u4E0B' : '\u25A1', // '㊦' => ‘下’
+                    '\u32A7' => force ? '\u5DE6' : '\u25A1', // '㊧' => '左'
+                    '\u32A8' => force ? '\u53F3' : '\u25A1', // '㊨' => '右'
+                    '\u3232' => force ? '\u6709' : '\u25A1', // '㈲' => '有'
+                    '\u3239' => force ? '\u4EE3' : '\u25A1', // '㈹' => '代'
                     '\u337E' => '\u25A1', // '㍾'
                     '\u337D' => '\u25A1', // '㍽'
                     '\u337C' => '\u25A1', // '㍼'
