@@ -31,13 +31,16 @@ namespace Ikura
                                 path = args[0];
                                 break;
                             }
+
                             if (Directory.Exists(args[0]))
                             {
                                 mode = "-i";
                                 path = args[0].TrimEnd('~');
                             }
+
                             break;
                     }
+
                     break;
                 case 2:
                     _encoding = null;
@@ -62,16 +65,16 @@ namespace Ikura
                     {
                         scripts = reader.ReadIkuraScripts();
                     }
+
                     Directory.CreateDirectory($"{path}~");
-                    
+
                     foreach (var script in scripts)
                     {
                         Console.WriteLine($"Export {script.Name}");
                         using var writer = File.CreateText($"{path}~/{script.Name}.txt");
                         for (var i = 0; i < script.Commands.Length; i++)
                         {
-                            foreach (var line in 
-                                     Export(script.Commands[i].Key, script.Commands[i].Value))
+                            foreach (var line in Export(script.Commands[i].Key, script.Commands[i].Value))
                             {
                                 writer.WriteLine($">{script.Commands[i].Key}");
                                 writer.WriteLine($"◇{i:D4}◇{line}");
@@ -90,7 +93,7 @@ namespace Ikura
                     {
                         scripts = reader.ReadIkuraScripts();
                     }
-                    
+
                     foreach (var script in scripts)
                     {
                         if (!File.Exists($"{path}~/{script.Name}.txt")) continue;
@@ -103,22 +106,22 @@ namespace Ikura
 
                             var index = int.Parse(m.Groups[1].Value);
                             var text = m.Groups[2].Value;
-                            
+
                             var lines = translated[index] ?? Array.Empty<string>();
                             Array.Resize(ref lines, lines.Length + 1);
                             lines[lines.Length - 1] = text;
                             translated[index] = lines;
                         }
-                        
+
                         for (var i = 0; i < script.Commands.Length; i++)
                         {
                             if (translated[i] == null) continue;
                             var instruction = script.Commands[i].Key;
                             var bytes = Import(instruction, script.Commands[i].Value, translated[i]);
-                            script.Commands[i] = new KeyValuePair<IkuraScript.Instruction,byte[]>(instruction, bytes);
+                            script.Commands[i] = new KeyValuePair<IkuraScript.Instruction, byte[]>(instruction, bytes);
                         }
                     }
-                    
+
                     var filename = $"{path}_{_encoding.WebName}";
                     Console.WriteLine($"Write {filename}");
                     using (var stream = File.Create(filename))
@@ -154,7 +157,7 @@ namespace Ikura
             var type = _encoding.GetString(reader.ReadBytes(12).TrimEnd());
             if (type != FileType) throw new NotSupportedException($"Not supported type: {type}.");
             var offset = reader.ReadInt32();
-            
+
             var scripts = new IkuraScript[count];
 
             for (var i = 0; i < count; i++)
@@ -163,16 +166,16 @@ namespace Ikura
                 var name = _encoding.GetString(reader.ReadBytes(0x0C).TrimEnd());
                 var pos = reader.ReadInt32();
                 var size = reader.ReadInt32();
-                
+
                 reader.BaseStream.Position = pos;
                 var bytes = reader.ReadBytes(size);
-                
+
                 scripts[i] = new IkuraScript(name, bytes);
             }
 
             return scripts;
         }
-        
+
         private static void WriteIkuraScripts(this BinaryWriter writer, IkuraScript[] scripts)
         {
             var offset = (uint)(0x0000_0020 + 0x14 * scripts.Length);
@@ -181,23 +184,23 @@ namespace Ikura
             writer.Write(_encoding.GetBytes(FileHead));
             writer.Write(scripts.Length);
             writer.Write(offset - 0x04);
-            
+
             Array.Clear(buffer, 0, buffer.Length);
             _encoding.GetBytes(FileType).CopyTo(buffer, 0);
             writer.Write(buffer);
             writer.Write(0x0000_0020);
-            
+
             for (var i = 0; i < scripts.Length; i++)
             {
                 var bytes = scripts[i].ToBytes();
-                
+
                 writer.BaseStream.Position = 0x0000_0020 + i * 0x14;
-                Array.Clear(buffer, 0, buffer.Length); 
-                Encoding.ASCII.GetBytes(scripts[i].Name).CopyTo(buffer, 0); 
+                Array.Clear(buffer, 0, buffer.Length);
+                Encoding.ASCII.GetBytes(scripts[i].Name).CopyTo(buffer, 0);
                 writer.Write(buffer);
                 writer.Write(offset);
                 writer.Write((uint)bytes.Length);
-                
+
                 writer.BaseStream.Position = offset;
                 writer.Write(bytes);
                 offset += (uint)(bytes.Length + 0x0F) & 0xFFFF_FFF0u;
@@ -212,28 +215,28 @@ namespace Ikura
             switch (instruction)
             {
                 case IkuraScript.Instruction.CSET:
-                    return new [] { _encoding.GetString(args, 18, args.Length - 18) };
+                    return new[] { _encoding.GetString(args, 18, args.Length - 18) };
                 case IkuraScript.Instruction.CNS:
-                    return new [] { _encoding.GetString(args, 2, args.Length - 2) };
+                    return new[] { _encoding.GetString(args, 2, args.Length - 2) };
                 case IkuraScript.Instruction.PM:
                 case IkuraScript.Instruction.PMP:
                     return IkuraScript.Decode(args, 1)
                         .Select(line => _encoding.GetString(line).Replace("・", "﹡"))
                         .ToArray();
                 case IkuraScript.Instruction.MSGBOX:
-                    return new [] { _encoding.GetString(args, 4, args.Length - 6) };
+                    return new[] { _encoding.GetString(args, 4, args.Length - 6) };
                 case IkuraScript.Instruction.MPM:
                     if (args[1] == 0) return Array.Empty<string>();
                     return IkuraScript.Decode(args, 2)
                         .Select(line => _encoding.GetString(line).Replace("・", "﹡"))
                         .ToArray();
                 case IkuraScript.Instruction.SETGAMEINFO:
-                    return new [] { _encoding.GetString(args, 0, args.Length - 1) };
+                    return new[] { _encoding.GetString(args, 0, args.Length - 1) };
                 default:
                     return Array.Empty<string>();
             }
         }
-        
+
         private static byte[] Import(IkuraScript.Instruction instruction, byte[] args, string[] lines)
         {
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault

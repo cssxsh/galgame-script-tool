@@ -8,9 +8,9 @@ namespace SystemEpsylon
     public readonly struct SystemEpsylonScript
     {
         public readonly string Name;
-        
+
         public readonly uint Flags;
-        
+
         public readonly byte[][] Commands;
 
         public SystemEpsylonScript(string name, uint flags, byte[] bytes)
@@ -22,7 +22,7 @@ namespace SystemEpsylon
             {
                 var key = (uint)bytes.Length >> 2;
                 key ^= key << (int)((key & 7) + 8);
-                for (var i =  0; i < bytes.Length; i += 4)
+                for (var i = 0; i < bytes.Length; i += 4)
                 {
                     if (bytes.Length - i < 4) break;
                     var temp = BitConverter.ToUInt32(bytes, i) ^ key;
@@ -46,7 +46,7 @@ namespace SystemEpsylon
                     var position = steam.Position;
                     var instruction = reader.ReadByte();
                     var size = reader.ReadByte();
-                    
+
                     switch (instruction)
                     {
                         case 0x00:
@@ -90,7 +90,7 @@ namespace SystemEpsylon
                             _ = reader.ReadByte();
                             var len = reader.ReadByte();
                             size += len;
-                            
+
                             // _ = reader.ReadByte();
                             // _ = reader.ReadByte();
                             // _ = reader.ReadByte();
@@ -104,12 +104,12 @@ namespace SystemEpsylon
                             var len = reader.ReadByte();
                             size += len;
                             // _ = reader.ReadByte();
-                            
+
                             // _ = reader.ReadByte();
                             // _ = reader.ReadByte();
                             // _ = reader.ReadByte();
                             // _ = reader.ReadByte();
-                            
+
                             // _ = reader.ReadByte();
                             // _ = reader.ReadByte();
                             // _ = reader.ReadByte();
@@ -124,12 +124,12 @@ namespace SystemEpsylon
                     {
                         throw new FormatException($"{instruction:X2}");
                     }
-                    
+
                     steam.Position = position;
                     commands.Add(reader.ReadBytes(size));
                 }
             }
-            
+
             Commands = commands.ToArray();
         }
 
@@ -142,7 +142,7 @@ namespace SystemEpsylon
                 command.CopyTo(bytes, index);
                 index += command.Length;
             }
-            
+
             for (var i = 0; i < bytes.Length; i++)
             {
                 bytes[i] ^= 0xFF;
@@ -153,7 +153,7 @@ namespace SystemEpsylon
             {
                 var key = (uint)bytes.Length >> 2;
                 key ^= key << (int)((key & 7) + 8);
-                for (var i =  0; i < bytes.Length; i += 4)
+                for (var i = 0; i < bytes.Length; i += 4)
                 {
                     if (bytes.Length - i < 4) break;
                     var temp = BitConverter.ToUInt32(bytes, i);

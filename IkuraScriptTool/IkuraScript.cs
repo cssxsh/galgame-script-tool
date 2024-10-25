@@ -192,6 +192,7 @@ namespace Ikura
                                 offset++;
                                 break;
                             }
+
                             switch (data[offset])
                             {
                                 case 0x5C:
@@ -278,6 +279,7 @@ namespace Ikura
                                 offset++;
                                 break;
                             }
+
                             switch (data[offset])
                             {
                                 case 0x5C:
@@ -291,7 +293,7 @@ namespace Ikura
                         }
 
                         buffer.Add(0xFF);
-                        
+
                         for (var i = 0; i < messages[k].Length; i++)
                         {
                             if (messages[k][i] <= 0x7F)
@@ -336,7 +338,7 @@ namespace Ikura
                 {
                     buffer.Add(data[i]);
                 }
-            } 
+            }
 
             Array.Resize(ref data, index + buffer.Count);
             buffer.CopyTo(data, index);

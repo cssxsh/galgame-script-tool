@@ -30,13 +30,16 @@ namespace SystemEpsylon
                                 path = args[0];
                                 break;
                             }
+
                             if (Directory.Exists(args[0]))
                             {
                                 mode = "-i";
                                 path = args[0].TrimEnd('~');
                             }
+
                             break;
                     }
+
                     break;
                 case 2:
                     _encoding = null;
@@ -172,11 +175,11 @@ namespace SystemEpsylon
             writer.Write(scripts.Length);
             var buffer = new byte[0x20];
             var offset = (uint)(0x10 + scripts.Length * 0x30);
-            
+
             for (var i = 0; i < scripts.Length; i++)
             {
                 var bytes = scripts[i].ToBytes();
-                
+
                 writer.BaseStream.Position = 0x10 + i * 0x30;
                 Array.Clear(buffer, 0, buffer.Length);
                 _encoding.GetBytes(scripts[i].Name).CopyTo(buffer, 0);
@@ -200,15 +203,6 @@ namespace SystemEpsylon
             switch (command[0])
             {
                 case 0x00:
-                    // case 0x02:
-                    // case 0x0D:
-                    // case 0x18:
-                    // case 0x1E:
-                    // case 0x1F:
-                    // case 0x20:
-                    // case 0x26:
-                    // case 0x36:
-                    // case 0x3A:
                     var count = 0;
                     for (var i = command[1]; i < command.Length; i++)
                     {
