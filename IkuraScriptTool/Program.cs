@@ -17,6 +17,7 @@ namespace Ikura
             switch (args.Length)
             {
                 case 1:
+                    _encoding = null;
                     switch (args[0])
                     {
                         case "-e":
@@ -39,9 +40,9 @@ namespace Ikura
                     }
                     break;
                 case 2:
+                    _encoding = null;
                     mode = args[0];
                     path = args[1];
-                    _encoding = null;
                     break;
                 case 3:
                     mode = args[0];
