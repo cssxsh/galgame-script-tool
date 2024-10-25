@@ -16,5 +16,11 @@ namespace ATool
 
             return target;
         }
+
+        public static string ReplaceGbkUnsupported(this string source)
+        {
+            return source
+                .Replace('・', '﹡');
+        }
     }
 }

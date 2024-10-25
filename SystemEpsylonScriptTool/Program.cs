@@ -210,6 +210,7 @@ namespace SystemEpsylon
 
         private static byte[] Import(byte[] command, string text)
         {
+            text = text.ReplaceGbkUnsupported();
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
             switch (command[0])
             {
