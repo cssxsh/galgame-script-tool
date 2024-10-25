@@ -1,0 +1,18 @@
+﻿<!-- Directory.Build.props -->
+<Project>
+    <PropertyGroup>
+        <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+        <FileAlignment>512</FileAlignment>
+        <LangVersion>8</LangVersion>
+    </PropertyGroup>
+
+<!--    <ItemGroup>-->
+<!--        &lt;!&ndash; 定义共享的文件包含规则 &ndash;&gt;-->
+<!--        <Compile Include="Common\**\*.cs" />-->
+<!--    </ItemGroup>-->
+
+<!--    <Target Name="CustomBuildTarget" AfterTargets="Build">-->
+<!--        &lt;!&ndash; 自定义构建目标的任务 &ndash;&gt;-->
+<!--        <Message Text="Custom build target executed." Importance="high" />-->
+<!--    </Target>-->
+</Project>
