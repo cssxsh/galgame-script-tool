@@ -225,10 +225,12 @@ namespace SystemEpsylon
 
                     if (count < bytes.Length)
                     {
-                        var temp = new byte[command[3] - count];
-                        Array.Copy(command, command[1] + count, temp, 0, temp.Length);
-                        Array.Resize(ref command, command[1] + bytes.Length + temp.Length);
-                        temp.CopyTo(command, command[1] + bytes.Length);
+                        var diff = bytes.Length - count;
+                        var temp = new byte[diff + command[1] + command[3]];
+                        command.CopyTo(temp, 0);
+                        command.CopyTo(temp, diff);
+                        temp[3] = (byte)(diff + command[3]);
+                        command = temp;
                     }
                     
                     bytes.CopyTo(command, command[1]);
