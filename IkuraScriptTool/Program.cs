@@ -66,18 +66,16 @@ namespace Ikura
                     foreach (var script in scripts)
                     {
                         Console.WriteLine($"Export {script.Name}");
-                        using (var writer = File.CreateText($"{path}~/{script.Name}.txt"))
+                        using var writer = File.CreateText($"{path}~/{script.Name}.txt");
+                        for (var i = 0; i < script.Commands.Length; i++)
                         {
-                            for (var i = 0; i < script.Commands.Length; i++)
+                            foreach (var line in 
+                                     Export(script.Commands[i].Key, script.Commands[i].Value))
                             {
-                                foreach (var line in 
-                                         Export(script.Commands[i].Key, script.Commands[i].Value))
-                                {
-                                    writer.WriteLine($">{script.Commands[i].Key}");
-                                    writer.WriteLine($"◇{i:D4}◇{line}");
-                                    writer.WriteLine($"◆{i:D4}◆{line}");
-                                    writer.WriteLine();
-                                }
+                                writer.WriteLine($">{script.Commands[i].Key}");
+                                writer.WriteLine($"◇{i:D4}◇{line}");
+                                writer.WriteLine($"◆{i:D4}◆{line}");
+                                writer.WriteLine();
                             }
                         }
                     }

@@ -148,6 +148,7 @@ namespace SystemEpsylon
                 bytes[i] ^= 0xFF;
             }
 
+            // ReSharper disable once InvertIf
             if (0 != (Flags & 0x0001_0000))
             {
                 var key = (uint)bytes.Length >> 2;

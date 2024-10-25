@@ -5,6 +5,7 @@ using System.IO;
 
 namespace Ikura
 {
+    [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
     public readonly struct IkuraScript
     {
         public readonly string Name;

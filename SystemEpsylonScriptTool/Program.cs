@@ -53,7 +53,7 @@ namespace SystemEpsylon
             switch (mode)
             {
                 case "-e":
-                    _encoding = _encoding ?? Encoding.GetEncoding("SHIFT-JIS");
+                    _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream))
@@ -66,23 +66,21 @@ namespace SystemEpsylon
                     foreach (var script in scripts)
                     {
                         Console.WriteLine($"Export {script.Name}");
-                        using (var writer = File.CreateText($"{path}~/{script.Name}.txt"))
+                        using var writer = File.CreateText($"{path}~/{script.Name}.txt");
+                        for (var i = 0; i < script.Commands.Length; i++)
                         {
-                            for (var i = 0; i < script.Commands.Length; i++)
-                            {
-                                var text = Export(script.Commands[i]);
-                                if (text == null) continue;
-                                writer.WriteLine($">{script.Commands[i][0]:X2}");
-                                writer.WriteLine($"◇{i:D4}◇{text}");
-                                writer.WriteLine($"◆{i:D4}◆{text}");
-                                writer.WriteLine();
-                            }
+                            var text = Export(script.Commands[i]);
+                            if (text == null) continue;
+                            writer.WriteLine($">{script.Commands[i][0]:X2}");
+                            writer.WriteLine($"◇{i:D4}◇{text}");
+                            writer.WriteLine($"◆{i:D4}◆{text}");
+                            writer.WriteLine();
                         }
                     }
 
                     break;
                 case "-i":
-                    _encoding = _encoding ?? Encoding.GetEncoding("GBK");
+                    _encoding ??= Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream))
@@ -97,11 +95,11 @@ namespace SystemEpsylon
                         var translated = new string[script.Commands.Length][];
                         foreach (var line in File.ReadLines($"{path}~/{script.Name}.txt"))
                         {
-                            var m = Regex.Match(line, @"◆(\d+)◆(.+$)");
-                            if (!m.Success) continue;
+                            var match = Regex.Match(line, @"◆(\d+)◆(.+)$");
+                            if (!match.Success) continue;
 
-                            var index = int.Parse(m.Groups[1].Value);
-                            var text = m.Groups[2].Value;
+                            var index = int.Parse(match.Groups[1].Value);
+                            var text = match.Groups[2].Value;
 
                             var lines = translated[index] ?? Array.Empty<string>();
                             Array.Resize(ref lines, lines.Length + 1);
