@@ -62,7 +62,7 @@ namespace SystemEpsylon
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream))
                     {
-                        scripts = reader.ReadSystemEpsylonScript();
+                        scripts = reader.ReadSystemEpsylonScripts();
                     }
 
                     Directory.CreateDirectory($"{path}~");
@@ -89,7 +89,7 @@ namespace SystemEpsylon
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream))
                     {
-                        scripts = reader.ReadSystemEpsylonScript();
+                        scripts = reader.ReadSystemEpsylonScripts();
                     }
 
                     foreach (var script in scripts)
@@ -124,7 +124,7 @@ namespace SystemEpsylon
                     using (var stream = File.Create(filename))
                     using (var writer = new BinaryWriter(stream))
                     {
-                        writer.WriteSystemEpsylonScript(scripts);
+                        writer.WriteSystemEpsylonScripts(scripts);
                     }
 
                     break;
@@ -143,7 +143,7 @@ namespace SystemEpsylon
 
         private const string FileHead = "PACKDAT.";
 
-        private static SystemEpsylonScript[] ReadSystemEpsylonScript(this BinaryReader reader)
+        private static SystemEpsylonScript[] ReadSystemEpsylonScripts(this BinaryReader reader)
         {
             var head = _encoding.GetString(reader.ReadBytes(8));
             if (head != FileHead) throw new NotSupportedException($"Not supported version: {head}.");
@@ -168,7 +168,7 @@ namespace SystemEpsylon
             return scripts;
         }
 
-        private static void WriteSystemEpsylonScript(this BinaryWriter writer, SystemEpsylonScript[] scripts)
+        private static void WriteSystemEpsylonScripts(this BinaryWriter writer, SystemEpsylonScript[] scripts)
         {
             writer.Write(_encoding.GetBytes(FileHead));
             writer.Write(scripts.Length);
