@@ -53,6 +53,7 @@ namespace Will
                         case 0x0C:
                         case 0x0D:
                         case 0x0E:
+                        case 0x0F:
                         case 0x21:
                         case 0x26:
                         case 0x3E:

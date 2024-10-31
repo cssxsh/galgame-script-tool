@@ -238,36 +238,23 @@ namespace Will
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
             switch (command[1])
             {
+                // Message
                 case 0x09:
-                case 0x21:
-                case 0x26:
                 {
                     var offset = 2;
-                    if (command.Length >= 6 && command[0x05] == 0x00)
-                    {
-                        // var value = BitConverter.ToUInt32(command, offset);
-                        // Console.WriteLine($"0x{value:X8}");
-                        offset += 4;
-                    }
-                    else if (command[0x02] == 0x00)
-                    {
-                        // var value = command[offset];
-                        // Console.WriteLine($"0x{value:X2}");
-                        offset += 1;
-                    }
+                    if (command.Length >= 6 && command[0x05] == 0x00) offset += 4;
+                    else if (command[0x02] == 0x00) offset += 1;
 
                     var diff = command.Length - offset;
                     return diff == 0
                         ? null
                         : _encoding.GetString(command, offset, diff - 1);
                 }
+                // Character Name
                 case 0x25:
                 {
                     var offset = 2;
-                    for (; offset < 8; offset++)
-                    {
-                        if (command[offset] == 0x00) break;
-                    }
+                    for (; offset < 8; offset++) if (command[offset] == 0x00) break;
 
                     return _encoding.GetString(command, 2, offset - 2);
                 }
@@ -278,13 +265,24 @@ namespace Will
 
         private static byte[] Import(byte[] command, string text)
         {
-            text = text.ReplaceGbkUnsupported();
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
             switch (command[1])
             {
                 case 0x09:
                 {
-                    var bytes = _encoding.GetBytes(text);
+                    var match = Regex.Match(text, @"(\[\d{4}.+\])|([^[]+)", RegexOptions.Multiline);
+                    var bytes = new byte[_encoding.GetByteCount(text.ReplaceGbkUnsupported())];
+                    var index = 0;
+                    while (match.Success)
+                    {
+                        var temp = match.Groups[1].Success
+                            ? _jis.GetBytes(match.Groups[1].Value)
+                            : _encoding.GetBytes(match.Groups[2].Value.ReplaceGbkUnsupported());
+                        temp.CopyTo(bytes, index);
+                        index += temp.Length;
+                        match = match.NextMatch();
+                    }
+
                     var offset = 2;
                     if (command.Length >= 6 && command[0x05] == 0x00)
                     {
@@ -301,12 +299,10 @@ namespace Will
                     break;
                 case 0x25:
                 {
+                    text = text.ReplaceGbkUnsupported();
                     var bytes = _encoding.GetBytes(text);
                     bytes.CopyTo(command, 2);
                 }
-                    break;
-                default:
-                    // throw new NotSupportedException($"Import {command[1]:X2} is not supported");
                     break;
             }
 
