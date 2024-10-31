@@ -16,7 +16,6 @@ namespace Will
             switch (args.Length)
             {
                 case 1:
-                    _encoding = null;
                     switch (args[0])
                     {
                         case "-e":
@@ -46,14 +45,8 @@ namespace Will
 
                     break;
                 case 2:
-                    _encoding = null;
                     mode = args[0];
                     path = args[1];
-                    break;
-                case 3:
-                    mode = args[0];
-                    path = args[1];
-                    _encoding = Encoding.GetEncoding(args[2]);
                     break;
             }
 
@@ -61,7 +54,6 @@ namespace Will
             switch (mode)
             {
                 case "-e":
-                    _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream, _jis))
@@ -88,7 +80,6 @@ namespace Will
 
                     break;
                 case "-i":
-                    _encoding ??= Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream))
@@ -120,8 +111,7 @@ namespace Will
                         }
                     }
 
-                    var filename =
-                        $"{Path.GetFileNameWithoutExtension(path)}_{_encoding.WebName}{Path.GetExtension(path)}";
+                    var filename = $"{Path.GetFileNameWithoutExtension(path)}_{_gbk.WebName}{Path.GetExtension(path)}";
                     Console.WriteLine($"Write {filename}");
                     using (var stream = File.Create(filename))
                     using (var writer = new BinaryWriter(stream))
@@ -133,23 +123,25 @@ namespace Will
                 default:
                     Array.Resize(ref scripts, 0);
                     Console.WriteLine("Usage:");
-                    Console.WriteLine("  Export text : WillTool -e [script.dat] [encoding]");
-                    Console.WriteLine("  Import text : WillTool -i [script.dat] [encoding]");
+                    Console.WriteLine("  Export text : WillTool -e [*.scb]");
+                    Console.WriteLine("  Import text : WillTool -i [*.scb]");
                     Console.WriteLine("Press any key to continue...");
                     Console.ReadKey();
                     return;
             }
         }
+        
+        // ReSharper disable once FieldCanBeMadeReadOnly.Local
+        private static Encoding _gbk = Encoding.GetEncoding("GBK");
 
-        private static Encoding _encoding = Encoding.Default;
-
+        // ReSharper disable once FieldCanBeMadeReadOnly.Local
         private static Encoding _jis = Encoding.GetEncoding("SHIFT-JIS");
 
         private const string FileHead = "ARCG";
 
         private static WillScript[] ReadWillScripts(this BinaryReader reader)
         {
-            var head = _encoding.GetString(reader.ReadBytes(4));
+            var head = Encoding.ASCII.GetString(reader.ReadBytes(4));
             if (head != FileHead) throw new NotSupportedException($"Not supported version: {head}.");
             var version = reader.ReadUInt32();
             if (version != 0x0001_0000u) throw new NotSupportedException($"Not supported version: {version:X8}.");
@@ -191,7 +183,7 @@ namespace Will
         private static void WriteWillScripts(this BinaryWriter writer, WillScript[] scripts)
         {
             
-            writer.Write(_encoding.GetBytes(FileHead));
+            writer.Write(Encoding.ASCII.GetBytes(FileHead));
             writer.Write(0x0001_0000u);
             writer.Write(0xFFFF_FFFFu);
             writer.Write(0xFFFF_FFFFu);
@@ -248,7 +240,7 @@ namespace Will
                     var diff = command.Length - offset;
                     return diff == 0
                         ? null
-                        : _encoding.GetString(command, offset, diff - 1);
+                        : _jis.GetString(command, offset, diff - 1);
                 }
                 // Character Name
                 case 0x25:
@@ -256,7 +248,7 @@ namespace Will
                     var offset = 2;
                     for (; offset < 8; offset++) if (command[offset] == 0x00) break;
 
-                    return _encoding.GetString(command, 2, offset - 2);
+                    return _jis.GetString(command, 2, offset - 2);
                 }
                 default:
                     return null;
@@ -271,13 +263,13 @@ namespace Will
                 case 0x09:
                 {
                     var match = Regex.Match(text, @"(\[\d{4}.+\])|([^[]+)", RegexOptions.Multiline);
-                    var bytes = new byte[_encoding.GetByteCount(text.ReplaceGbkUnsupported())];
+                    var bytes = new byte[_gbk.GetByteCount(text.ReplaceGbkUnsupported())];
                     var index = 0;
                     while (match.Success)
                     {
                         var temp = match.Groups[1].Success
                             ? _jis.GetBytes(match.Groups[1].Value)
-                            : _encoding.GetBytes(match.Groups[2].Value.ReplaceGbkUnsupported());
+                            : _gbk.GetBytes(match.Groups[2].Value.ReplaceGbkUnsupported());
                         temp.CopyTo(bytes, index);
                         index += temp.Length;
                         match = match.NextMatch();
@@ -299,8 +291,7 @@ namespace Will
                     break;
                 case 0x25:
                 {
-                    text = text.ReplaceGbkUnsupported();
-                    var bytes = _encoding.GetBytes(text);
+                    var bytes = _gbk.GetBytes(text.ReplaceGbkUnsupported());
                     bytes.CopyTo(command, 2);
                 }
                     break;
