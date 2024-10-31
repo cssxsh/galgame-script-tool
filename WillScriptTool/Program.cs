@@ -286,12 +286,15 @@ namespace Will
                     }
 
                     Array.Resize(ref command, offset + bytes.Length + 1);
+                    Array.Clear(command, offset, command.Length - offset);
                     bytes.CopyTo(command, offset);
+                    command[0] = (byte)command.Length;
                 }
                     break;
                 case 0x25:
                 {
                     var bytes = _gbk.GetBytes(text.ReplaceGbkUnsupported());
+                    Array.Clear(command, 2, command.Length - 2);
                     bytes.CopyTo(command, 2);
                 }
                     break;

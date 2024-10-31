@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using ATool;
 
 namespace Will
@@ -19,8 +21,9 @@ namespace Will
             var commands = new List<byte[]>();
             // ReSharper disable once RedundantAssignment
             var temp = Array.Empty<byte>();
+            var encoding = Encoding.GetEncoding(932);
             using (var steam = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(steam))
+            using (var reader = new BinaryReader(steam, encoding))
             {
                 while (steam.Position < bytes.Length)
                 {
@@ -62,13 +65,13 @@ namespace Will
                             if (size >= 6 && bytes[position + 0x05] == 0x00)
                             {
                                 var value = reader.ReadUInt32();
-                                // Console.WriteLine($"0x{value:X8}");
+                                Debug.WriteLine($"0x{value:X8}");
                                 offset += 4;
                             }
                             else if (bytes[position + 0x02] == 0x00)
                             {
                                 var value = reader.ReadByte();
-                                // Console.WriteLine($"0x{value:X2}");
+                                Debug.WriteLine($"0x{value:X2}");
                                 offset += 1;
                             }
 
@@ -76,21 +79,21 @@ namespace Will
                             temp = reader.ReadBytes(size - offset).TrimEnd();
                             if (temp.Length != 0 && temp.Length != size - offset - 1)
                                 throw new FormatException($"{name} at 0x{position:X8}");
-                            // Console.WriteLine($"'{encoding.GetString(temp).ReplaceGbkUnsupported()}'");
+                            Debug.WriteLine($"'{encoding.GetString(temp).ReplaceGbkUnsupported()}'");
                         }
                             break;
                         case 0x25:
                         {
                             temp = reader.ReadBytes(6);
-                            // Console.WriteLine($"'{encoding.GetString(temp.TrimEnd())}'");
+                            Debug.WriteLine($"'{encoding.GetString(temp.TrimEnd())}'");
                         }
                             break;
                         case 0x47:
                         {
                             temp = reader.ReadBytes(6);
-                            // Console.WriteLine(BitConverter.ToString(temp));
+                            Debug.WriteLine(BitConverter.ToString(temp));
                             temp = reader.ReadBytes(size - 2 - 6);
-                            // Console.WriteLine($"'{encoding.GetString(temp)}'");
+                            Debug.WriteLine($"'{encoding.GetString(temp)}'");
                         }
                             break;
                         case 0x57:
@@ -98,15 +101,15 @@ namespace Will
                             if (size == 4)
                             {
                                 temp = reader.ReadBytes(2);
-                                // Console.WriteLine(BitConverter.ToString(temp));
+                                Debug.WriteLine(BitConverter.ToString(temp));
                                 break;
                             }
                             temp = reader.ReadBytes(4);
-                            // Console.WriteLine(BitConverter.ToString(temp));
+                            Debug.WriteLine(BitConverter.ToString(temp));
                             temp = reader.ReadBytes(size - 2 - 4).TrimEnd();
                             if (temp.Length != size - 2 - 4 - 1)
                                 throw new FormatException($"{name} at 0x{position:X8}");
-                            // Console.WriteLine($"'{encoding.GetString(temp)}'");
+                            Debug.WriteLine($"'{encoding.GetString(temp)}'");
                         }
                             break;
                         case 0x23:
@@ -122,13 +125,13 @@ namespace Will
                         case 0x7E:
                         {
                             temp = reader.ReadBytes(size - 2);
-                            // Console.WriteLine(BitConverter.ToString(temp));
+                            Debug.WriteLine(BitConverter.ToString(temp));
                         }
                             break;
                         default:
                         {
                             temp = reader.ReadBytes(size - 2);
-                            // Console.WriteLine(BitConverter.ToString(temp));
+                            Debug.WriteLine(BitConverter.ToString(temp));
                         }
                             throw new FormatException($"{name} with 0x{instruction:X2}");
                     }
