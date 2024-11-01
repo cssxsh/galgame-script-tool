@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -16,6 +17,7 @@ namespace Will
             switch (args.Length)
             {
                 case 1:
+                    _encoding = null;
                     switch (args[0])
                     {
                         case "-e":
@@ -45,8 +47,14 @@ namespace Will
 
                     break;
                 case 2:
+                    _encoding = null;
                     mode = args[0];
                     path = args[1];
+                    break;
+                case 3:
+                    mode = args[0];
+                    path = args[1];
+                    _encoding = Encoding.GetEncoding(args[2]);
                     break;
             }
 
@@ -54,6 +62,7 @@ namespace Will
             switch (mode)
             {
                 case "-e":
+                    _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream, _jis))
@@ -65,6 +74,7 @@ namespace Will
 
                     foreach (var script in scripts)
                     {
+                        if (script.Name.EndsWith("Tbl")) continue;
                         Console.WriteLine($"Export {script.Name}");
                         using var writer = File.CreateText($"{path}~/{script.Name}.txt");
                         for (var i = 0; i < script.Commands.Length; i++)
@@ -80,6 +90,7 @@ namespace Will
 
                     break;
                 case "-i":
+                    _encoding ??= Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream))
@@ -89,8 +100,8 @@ namespace Will
 
                     foreach (var script in scripts)
                     {
+                        if (script.Name.EndsWith("Tbl")) continue;
                         if (!File.Exists($"{path}~/{script.Name}.txt")) continue;
-                        if (script.Name == "FlgTbl") continue;
                         Console.WriteLine($"Import {script.Name}");
                         var translated = new string[script.Commands.Length];
                         foreach (var line in File.ReadLines($"{path}~/{script.Name}.txt"))
@@ -111,7 +122,8 @@ namespace Will
                         }
                     }
 
-                    var filename = $"{Path.GetFileNameWithoutExtension(path)}_{_gbk.WebName}{Path.GetExtension(path)}";
+                    var filename =
+                        $"{Path.GetFileNameWithoutExtension(path)}_{_encoding.WebName}{Path.GetExtension(path)}";
                     Console.WriteLine($"Write {filename}");
                     using (var stream = File.Create(filename))
                     using (var writer = new BinaryWriter(stream))
@@ -123,16 +135,15 @@ namespace Will
                 default:
                     Array.Resize(ref scripts, 0);
                     Console.WriteLine("Usage:");
-                    Console.WriteLine("  Export text : WillTool -e [*.scb]");
-                    Console.WriteLine("  Import text : WillTool -i [*.scb]");
+                    Console.WriteLine("  Export text : WillTool -e [*.scb] [encoding]");
+                    Console.WriteLine("  Import text : WillTool -i [*.scb] [encoding]");
                     Console.WriteLine("Press any key to continue...");
                     Console.ReadKey();
                     return;
             }
         }
-        
-        // ReSharper disable once FieldCanBeMadeReadOnly.Local
-        private static Encoding _gbk = Encoding.GetEncoding("GBK");
+
+        private static Encoding _encoding = Encoding.Default;
 
         // ReSharper disable once FieldCanBeMadeReadOnly.Local
         private static Encoding _jis = Encoding.GetEncoding("SHIFT-JIS");
@@ -141,7 +152,7 @@ namespace Will
 
         private static WillScript[] ReadWillScripts(this BinaryReader reader)
         {
-            var head = Encoding.ASCII.GetString(reader.ReadBytes(4));
+            var head = _encoding.GetString(reader.ReadBytes(4));
             if (head != FileHead) throw new NotSupportedException($"Not supported version: {head}.");
             var version = reader.ReadUInt32();
             if (version != 0x0001_0000u) throw new NotSupportedException($"Not supported version: {version:X8}.");
@@ -182,7 +193,6 @@ namespace Will
 
         private static void WriteWillScripts(this BinaryWriter writer, WillScript[] scripts)
         {
-            
             writer.Write(Encoding.ASCII.GetBytes(FileHead));
             writer.Write(0x0001_0000u);
             writer.Write(0xFFFF_FFFFu);
@@ -196,7 +206,7 @@ namespace Will
                 var bytes = scripts[i].ToBytes();
                 writer.Write(bytes);
             }
-            
+
             var offset = writer.BaseStream.Position;
             writer.Write(0x0000_0004u);
             writer.Write((uint)(writer.BaseStream.Position + 0x0C));
@@ -216,7 +226,7 @@ namespace Will
                 writer.Write(size);
                 position += size;
             }
-            
+
             writer.Write(0x0000_0000u);
             var diff = writer.BaseStream.Position - offset;
             writer.BaseStream.Position = 0x0000_0008;
@@ -226,29 +236,24 @@ namespace Will
 
         private static string Export(byte[] command)
         {
-            if (command.Length <= 2) return null;
+            if (command.Length != command[0]) return null;
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
             switch (command[1])
             {
                 // Message
                 case 0x09:
                 {
-                    var offset = 2;
-                    if (command.Length >= 6 && command[0x05] == 0x00) offset += 4;
-                    else if (command[0x02] == 0x00) offset += 1;
-
-                    var diff = command.Length - offset;
-                    return diff == 0
-                        ? null
-                        : _jis.GetString(command, offset, diff - 1);
+                    return _encoding.GetString(command, 2, command[0] - 3);
                 }
                 // Character Name
                 case 0x25:
                 {
                     var offset = 2;
-                    for (; offset < 8; offset++) if (command[offset] == 0x00) break;
+                    for (; offset < 8; offset++)
+                        if (command[offset] == 0x00)
+                            break;
 
-                    return _jis.GetString(command, 2, offset - 2);
+                    return _encoding.GetString(command, 2, offset - 2);
                 }
                 default:
                     return null;
@@ -257,43 +262,27 @@ namespace Will
 
         private static byte[] Import(byte[] command, string text)
         {
+            if (command.Length != command[0]) return command;
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
             switch (command[1])
             {
+                // Message
                 case 0x09:
                 {
                     var match = Regex.Match(text, @"(\[\d{4}.+\])|([^[]+)", RegexOptions.Multiline);
-                    var bytes = new byte[_gbk.GetByteCount(text.ReplaceGbkUnsupported())];
-                    var index = 0;
-                    while (match.Success)
-                    {
-                        var temp = match.Groups[1].Success
-                            ? _jis.GetBytes(match.Groups[1].Value)
-                            : _gbk.GetBytes(match.Groups[2].Value.ReplaceGbkUnsupported());
-                        temp.CopyTo(bytes, index);
-                        index += temp.Length;
-                        match = match.NextMatch();
-                    }
+                    var bytes = AsMessage();
 
-                    var offset = 2;
-                    if (command.Length >= 6 && command[0x05] == 0x00)
-                    {
-                        offset += 4;
-                    }
-                    else if (command[0x02] == 0x00)
-                    {
-                        offset += 1;
-                    }
-
-                    Array.Resize(ref command, offset + bytes.Length + 1);
-                    Array.Clear(command, offset, command.Length - offset);
-                    bytes.CopyTo(command, offset);
+                    Array.Resize(ref command, 2 + bytes.Length + 1);
                     command[0] = (byte)command.Length;
+                    Array.Clear(command, 2, command.Length - 2);
+                    bytes.CopyTo(command, 2);
                 }
                     break;
+                // Character Name
                 case 0x25:
                 {
-                    var bytes = _gbk.GetBytes(text.ReplaceGbkUnsupported());
+                    if (_encoding.CodePage == 936) text = text.ReplaceGbkUnsupported();
+                    var bytes = _encoding.GetBytes(text);
                     Array.Clear(command, 2, command.Length - 2);
                     bytes.CopyTo(command, 2);
                 }
@@ -301,6 +290,42 @@ namespace Will
             }
 
             return command;
+
+            byte[] AsMessage()
+            {
+                var match = Regex.Match(text, @"(\[\d{4}.+\])|([^[]+)", RegexOptions.Multiline);
+                switch (_encoding.CodePage)
+                {
+                    case 932:
+                        return _encoding.GetBytes(text);
+                    case 936:
+                        var bytes = new byte[_encoding.GetByteCount(text.ReplaceGbkUnsupported())];
+                        var index = 0;
+                        while (match.Success)
+                        {
+                            var temp = match.Groups[1].Success
+                                ? _jis.GetBytes(match.Groups[1].Value)
+                                : _encoding.GetBytes(match.Groups[2].Value.ReplaceGbkUnsupported());
+                            temp.CopyTo(bytes, index);
+                            index += temp.Length;
+                            match = match.NextMatch();
+                        }
+
+                        return bytes;
+                    default:
+                        var buffer = new List<byte>();
+                        while (match.Success)
+                        {
+                            var temp = match.Groups[1].Success
+                                ? _jis.GetBytes(match.Groups[1].Value)
+                                : _encoding.GetBytes(match.Groups[2].Value);
+                            buffer.AddRange(temp);
+                            match = match.NextMatch();
+                        }
+
+                        return buffer.ToArray();
+                }
+            }
         }
     }
 }
