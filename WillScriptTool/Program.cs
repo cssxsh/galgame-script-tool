@@ -74,7 +74,7 @@ namespace Will
 
                     foreach (var script in scripts)
                     {
-                        if (script.Name.EndsWith("Tbl")) continue;
+                        if (!script.HasText()) continue;
                         Console.WriteLine($"Export {script.Name}");
                         using var writer = File.CreateText($"{path}~/{script.Name}.txt");
                         for (var i = 0; i < script.Commands.Length; i++)
@@ -100,7 +100,7 @@ namespace Will
 
                     foreach (var script in scripts)
                     {
-                        if (script.Name.EndsWith("Tbl")) continue;
+                        if (!script.HasText()) continue;
                         if (!File.Exists($"{path}~/{script.Name}.txt")) continue;
                         Console.WriteLine($"Import {script.Name}");
                         var translated = new string[script.Commands.Length];
@@ -269,7 +269,6 @@ namespace Will
                 // Message
                 case 0x09:
                 {
-                    var match = Regex.Match(text, @"(\[\d{4}.+\])|([^[]+)", RegexOptions.Multiline);
                     var bytes = AsMessage();
 
                     Array.Resize(ref command, 2 + bytes.Length + 1);
@@ -326,6 +325,13 @@ namespace Will
                         return buffer.ToArray();
                 }
             }
+        }
+
+        private static bool HasText(this WillScript script)
+        {
+            if (script.Name.EndsWith("Tbl")) return false;
+            return script.Commands
+                .Any(command => command.Length > 2 && (command[1] == 0x09 || command[1] == 0x25));
         }
     }
 }

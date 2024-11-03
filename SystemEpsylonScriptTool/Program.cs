@@ -69,6 +69,7 @@ namespace SystemEpsylon
 
                     foreach (var script in scripts)
                     {
+                        if (!script.HasText()) continue;
                         Console.WriteLine($"Export {script.Name}");
                         using var writer = File.CreateText($"{path}~/{script.Name}.txt");
                         for (var i = 0; i < script.Commands.Length; i++)
@@ -94,6 +95,7 @@ namespace SystemEpsylon
 
                     foreach (var script in scripts)
                     {
+                        if (!script.HasText()) continue;
                         if (!File.Exists($"{path}~/{script.Name}.txt")) continue;
                         Console.WriteLine($"Import {script.Name}");
                         var translated = new string[script.Commands.Length][];
@@ -239,6 +241,12 @@ namespace SystemEpsylon
             }
 
             return command;
+        }
+
+        private static bool HasText(this SystemEpsylonScript script)
+        {
+            return script.Commands
+                .Any(command => command.Length > 1 && command[0] == 0x00);
         }
     }
 }
