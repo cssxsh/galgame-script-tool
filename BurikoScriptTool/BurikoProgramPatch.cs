@@ -43,6 +43,7 @@ namespace BGI
                         0x01 => 4,
                         0x03 => 4,
                         _ => throw new FormatException($"{position:X8}: {instruction:X2}")
+                        0x7F => 4,
                     };
                 
                     if (instruction == 0x03)
