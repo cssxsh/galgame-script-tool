@@ -10,7 +10,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AToolTest", "AToolTest\AToo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WillScriptTool", "WillScriptTool\WillScriptTool.csproj", "{7D4BD0A5-C54D-44EC-B158-25F44C117C9F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BurikoGeneralInterpreterScriptTool", "BurikoGeneralInterpreterScriptTool\BurikoGeneralInterpreterScriptTool.csproj", "{8F60B2FF-4CC0-40B0-807F-16BCFE10DC5B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BurikoScriptTool", "BurikoScriptTool\BurikoScriptTool.csproj", "{8F60B2FF-4CC0-40B0-807F-16BCFE10DC5B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

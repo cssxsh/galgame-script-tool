@@ -9,7 +9,7 @@
         <OutputType>Exe</OutputType>
         <AppDesignerFolder>Properties</AppDesignerFolder>
         <RootNamespace>BGI</RootNamespace>
-        <AssemblyName>BurikoGeneralInterpreterScriptTool</AssemblyName>
+        <AssemblyName>BurikoScriptTool</AssemblyName>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
         <PlatformTarget>AnyCPU</PlatformTarget>
