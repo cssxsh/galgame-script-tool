@@ -10,14 +10,18 @@ namespace BGI
     [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
     public readonly struct BurikoProgramPatch
     {
+        public readonly string Name;
+
         public readonly uint Header;
-        
+
         public readonly uint Offset;
 
         public readonly KeyValuePair<uint, byte[]>[] Data;
 
-        public BurikoProgramPatch(byte[] source)
+        public BurikoProgramPatch(string name, byte[] source)
         {
+            Name = name;
+
             using var stream = new MemoryStream(source);
             using var reader = new BinaryReader(stream);
 
@@ -56,7 +60,7 @@ namespace BGI
 
                 Offset = size;
             }
-            else // ._bp
+            else if (Name.EndsWith("._bp")) // ._bp
             {
                 var position = Header;
                 var size = reader.ReadUInt32();
@@ -166,25 +170,29 @@ namespace BGI
                         0xC0 => 1,
                         0xE0 => 1,
                         0xFF => 1,
-                        _ => throw new FormatException($"{position:X8}: {instruction:X2}")
+                        _ => throw new FormatException($"{Name} at {position:X8}: {instruction:X2}")
                     };
-                
+
                     if (instruction == 0x05)
                     {
                         var offset = reader.ReadUInt16();
-                        if (size > offset) size = offset;
                         stream.Position = position + offset;
+                        if (size > stream.Position) size = (uint)stream.Position;
                         var count = source.Length - offset > 0x80 ? 0x80 : source.Length - offset;
                         var bytes = reader.ReadBytes(count).TrimEnd();
-                        data.Add(new KeyValuePair<uint, byte[]>(position + 1, bytes));
+                        data.Add(new KeyValuePair<uint, byte[]>(position, bytes));
                     }
-                
+
                     stream.Position = position + 1 + capacity;
                 }
 
                 Offset = size;
             }
-            
+            else
+            {
+                Offset = (uint)source.Length;
+            }
+
             Data = data.ToArray();
         }
     }

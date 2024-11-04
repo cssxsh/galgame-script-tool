@@ -38,6 +38,8 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="BurikoProgramPatch.cs" />
+        <Compile Include="HuffmanCode.cs" />
+        <Compile Include="HuffmanNode.cs" />
         <Compile Include="Program.cs" />
         <Compile Include="Properties\AssemblyInfo.cs"/>
     </ItemGroup>
