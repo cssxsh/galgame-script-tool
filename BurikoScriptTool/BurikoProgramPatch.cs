@@ -46,15 +46,16 @@ namespace BGI
                     };
                 
                     if (instruction == 0x03)
+                    if (instruction == 0x03 || instruction == 0x7F)
                     {
                         var offset = reader.ReadUInt32();
-                        if (size > offset) size = offset;
                         stream.Position = command + offset;
+                        if (size > stream.Position) size = (uint)stream.Position;
                         var count = (int)(source.Length - offset > 0x80 ? 0x80 : source.Length - offset);
                         var bytes = reader.ReadBytes(count).TrimEnd();
-                        data.Add(new KeyValuePair<uint, byte[]>(position + 1, bytes));
+                        data.Add(new KeyValuePair<uint, byte[]>(position, bytes));
                     }
-                
+
                     stream.Position = position + 4 + capacity;
                 }
 
