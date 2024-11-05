@@ -45,8 +45,7 @@ namespace BGI
                         _ => throw new FormatException($"{position:X8}: {instruction:X2}")
                         0x7F => 4,
                     };
-                
-                    if (instruction == 0x03)
+
                     if (instruction == 0x03 || instruction == 0x7F)
                     {
                         var offset = reader.ReadUInt32();
