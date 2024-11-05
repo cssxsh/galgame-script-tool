@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using ATool;
@@ -85,8 +84,8 @@ namespace BGI
                         {
                             var text = _encoding.GetString(patch.Data[i].Value);
                             writer.WriteLine($">{patch.Data[i].Key:X4}");
-                            writer.WriteLine($"◇{i:D4}◇{text}");
-                            writer.WriteLine($"◆{i:D4}◆{text}");
+                            writer.WriteLine($"◇{i:D4}◇{text.Replace("\n", @"\n")}");
+                            writer.WriteLine($"◆{i:D4}◆{text.Replace("\n", @"\n")}");
                             writer.WriteLine();
                         }
                     }
@@ -113,7 +112,7 @@ namespace BGI
                             if (!match.Success) continue;
 
                             var index = int.Parse(match.Groups[1].Value);
-                            var text = match.Groups[2].Value;
+                            var text = match.Groups[2].Value.Replace(@"\n", "\n");
                             if (_encoding.CodePage == 936) text = text.ReplaceGbkUnsupported();
 
                             var offset = patch.Data[index].Key;
@@ -123,31 +122,50 @@ namespace BGI
                         using var stream = File.Create($"./{patch.Name}");
                         stream.Write(file.Value, 0, (int)patch.Offset);
                         var position = patch.Offset;
-                        foreach (var item in patch.Data)
+
+                        if (file.Key.EndsWith("._bp"))
                         {
-                            stream.Position = position;
-                            stream.Write(item.Value, 0, item.Value.Length);
-                            stream.WriteByte(0x00);
-                        
-                            if (file.Key.EndsWith("._bp"))
+                            foreach (var item in patch.Data)
                             {
+                                stream.Position = position;
+                                stream.Write(item.Value, 0, item.Value.Length);
+                                stream.WriteByte(0x00);
+
                                 stream.Position = item.Key + 1;
                                 stream.Write(BitConverter.GetBytes((ushort)(position - item.Key)), 0, 2);
-                            }
-                            else
-                            {
-                                var offset = 0x1C + BitConverter.ToUInt32(file.Value, 0x1C);
-                                stream.Position = item.Key + 4;
-                                stream.Write(BitConverter.GetBytes(position - offset), 0, 4);
-                            }
                         
-                            position += (uint)(item.Value.Length + 1);
+                                position += (uint)(item.Value.Length + 1);
+                            }
+                            
+                            var limit = (position + 0x0F) & 0xFFFF_FFF0;
+                            var empty = new byte[limit - position];
+                            stream.Position = position;
+                            stream.Write(empty, 0, empty.Length);
                         }
-
-                        var limit = (position + 0x0F) & 0xFFFF_FFF0;
-                        var empty = new byte[limit - position];
-                        stream.Position = position;
-                        stream.Write(empty, 0, empty.Length);
+                        else
+                        {
+                            var command = 0x1C + BitConverter.ToUInt32(file.Value, 0x1C);
+                            var dictionary = new Dictionary<string, uint>();
+                            
+                            foreach (var item in patch.Data)
+                            {
+                                var hash = BitConverter.ToString(item.Value);
+                                if (!dictionary.TryGetValue(hash, out var value))
+                                {
+                                    stream.Position = position;
+                                    stream.Write(item.Value, 0, item.Value.Length);
+                                    stream.WriteByte(0x00);
+                                    
+                                    value = position - command;
+                                    dictionary.Add(hash, value);
+                        
+                                    position += (uint)(item.Value.Length + 1);
+                                }
+       
+                                stream.Position = item.Key + 4;
+                                stream.Write(BitConverter.GetBytes(value), 0, 4);
+                            }
+                        }
                     }
 
                     break;
@@ -212,6 +230,13 @@ namespace BGI
             using var stream = new MemoryStream(source);
             using var reader = new BinaryReader(stream);
             var header = Encoding.ASCII.GetString(reader.ReadBytes(0x10).TrimEnd());
+            switch (header)
+            {
+                case "DSC FORMAT 1.00":
+                    break;
+                default:
+                    throw new FormatException($"unsupported: {header}");
+            }
 
             stream.Position = 0x0000_0000;
             var magic = reader.ReadUInt32() << 16;

@@ -31,35 +31,30 @@ namespace BGI
             {
                 stream.Position = 0x0000_0000;
                 var header = Encoding.ASCII.GetString(reader.ReadBytes(0x1C).TrimEnd());
+                switch (header)
+                {
+                    case "BurikoCompiledScriptVer1.00":
+                        break;
+                    default:
+                        throw new FormatException($"unsupported: {header}");
+                }
+                
                 var command = 0x0000_001C + reader.ReadUInt32();
                 var size = (uint)source.Length;
-                stream.Position = command;
-                while (stream.Position < size)
+                // var prev = 0u;
+                for (var offset = command; offset < size; offset += 0x04)
                 {
-                    var position = (uint)stream.Position;
+                    if (offset + 8 > size) break;
+                    stream.Position = offset;
                     var instruction = reader.ReadUInt32();
-                    var capacity = instruction switch
-                    {
-                        0x01 => 4,
-                        0x03 => 4,
-                        _ => throw new FormatException($"{position:X8}: {instruction:X2}")
-                        0x7F => 4,
-                        0xF4 => 0,
-                        0xF9 => 0,
-                        _ => throw new FormatException($"{Name} at {position:X8}: {instruction:X2}")
-                    };
-
-                    if (instruction == 0x03 || instruction == 0x7F)
-                    {
-                        var offset = reader.ReadUInt32();
-                        stream.Position = command + offset;
-                        if (size > stream.Position) size = (uint)stream.Position;
-                        var count = (int)(source.Length - offset > 0x80 ? 0x80 : source.Length - offset);
-                        var bytes = reader.ReadBytes(count).TrimEnd();
-                        data.Add(new KeyValuePair<uint, byte[]>(position, bytes));
-                    }
-
-                    stream.Position = position + 4 + capacity;
+                    if (instruction != 0x03) continue;
+                    var temp = command + reader.ReadUInt32();
+                    if (temp < offset) continue;
+                    if (temp < size) size = temp;
+                    
+                    stream.Position = temp;
+                    var bytes = reader.ReadBytes(0x80).TrimEnd();
+                    data.Add(new KeyValuePair<uint, byte[]>(offset, bytes));
                 }
 
                 Offset = size;
