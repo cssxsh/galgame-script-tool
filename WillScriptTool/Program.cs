@@ -10,7 +10,7 @@ namespace Will
 {
     internal static class Program
     {
-        public static void Main(string[] args)
+        public static void Main(params string[] args)
         {
             var mode = "";
             var path = "*.scb";
@@ -23,11 +23,14 @@ namespace Will
                         case "-e":
                         case "-i":
                             mode = args[0];
-                            path = Directory
-                                .EnumerateFiles(".", "*.scb", SearchOption.TopDirectoryOnly)
-                                .DefaultIfEmpty(".scb")
-                                .First();
-                            break;
+                            var archives = Directory.GetFiles(".", path);
+                            if (archives.Length == 0) throw new FileNotFoundException(path);
+                            foreach (var file in archives)
+                            {
+                                if (file.Contains("gb2312")) continue;
+                                Main(mode, file);
+                            }
+                            return;
                         default:
                             if (File.Exists(args[0]))
                             {
@@ -135,8 +138,8 @@ namespace Will
                 default:
                     Array.Resize(ref scripts, 0);
                     Console.WriteLine("Usage:");
-                    Console.WriteLine("  Export text : WillTool -e [*.scb] [encoding]");
-                    Console.WriteLine("  Import text : WillTool -i [*.scb] [encoding]");
+                    Console.WriteLine("  Export text : WillScriptTool -e [*.scb] [encoding]");
+                    Console.WriteLine("  Import text : WillScriptTool -i [*.scb] [encoding]");
                     Console.WriteLine("Press any key to continue...");
                     Console.ReadKey();
                     return;

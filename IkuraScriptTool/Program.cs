@@ -10,7 +10,7 @@ namespace Ikura
 {
     internal static class Program
     {
-        public static void Main(string[] args)
+        public static void Main(params string[] args)
         {
             var mode = "";
             var path = "ISF";

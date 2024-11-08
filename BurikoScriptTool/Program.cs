@@ -23,12 +23,14 @@ namespace BGI
                         case "-e":
                         case "-i":
                             mode = args[0];
- 
-                            var archives = Directory
-                                .EnumerateFiles(".", path)
-                                .ToArray();
+
+                            var archives = Directory.GetFiles(".", path);
                             if (archives.Length == 0) throw new FileNotFoundException(path);
-                            foreach (var file in archives) Main(mode, file);
+                            foreach (var file in archives)
+                            {
+                                if (file.Contains("gb2312")) continue;
+                                Main(mode, file);
+                            }
                             return;
                         default:
                             if (File.Exists(args[0]))
@@ -100,6 +102,8 @@ namespace BGI
                         files = reader.ReadBurikoArchive();
                     }
 
+                    Directory.CreateDirectory(_encoding.WebName);
+                    
                     foreach (var file in files)
                     {
                         var patch = new BurikoProgramPatch(file.Key, file.Value);
@@ -119,7 +123,7 @@ namespace BGI
                             patch.Data[index] = new KeyValuePair<uint, byte[]>(offset, _encoding.GetBytes(text));
                         }
 
-                        using var stream = File.Create($"./{patch.Name}");
+                        using var stream = File.Create($"{_encoding.WebName}/{patch.Name}");
                         stream.Write(file.Value, 0, (int)patch.Offset);
                         var position = patch.Offset;
 
