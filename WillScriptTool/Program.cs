@@ -295,12 +295,13 @@ namespace Will
 
             byte[] AsMessage()
             {
-                var match = Regex.Match(text, @"(\[\d{4}.+\])|([^[]+)", RegexOptions.Multiline);
+                var match = Regex.Match(text, @"(\[\d{4}.+?\])|([^[]+|\[\d{4}\])", RegexOptions.Multiline);
                 switch (_encoding.CodePage)
                 {
                     case 932:
                         return _encoding.GetBytes(text);
                     case 936:
+                        if(!text.Contains('[')) return _encoding.GetBytes(text.ReplaceGbkUnsupported());
                         var bytes = new byte[_encoding.GetByteCount(text.ReplaceGbkUnsupported())];
                         var index = 0;
                         while (match.Success)
@@ -315,6 +316,7 @@ namespace Will
 
                         return bytes;
                     default:
+                        if(!text.Contains('[')) return _encoding.GetBytes(text);
                         var buffer = new List<byte>();
                         while (match.Success)
                         {
