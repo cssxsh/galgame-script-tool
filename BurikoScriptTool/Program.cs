@@ -345,22 +345,7 @@ namespace BGI
                         offset += 2;
                         var src = (int)(dst_ptr - offset);
                         var dst = dst_ptr;
-                        if (dst > src)
-                        {
-                            var t = count;
-                            while (t > 0)
-                            {
-                                var preceding = Math.Min(dst - src, t);
-                                Buffer.BlockCopy(output, src, output, dst, preceding);
-                                dst += preceding;
-                                t -= preceding;
-                            }
-                        }
-                        else
-                        {
-                            Buffer.BlockCopy(output, src, output, dst, count);
-                        }
-                        
+                        output.CopyOverlapped(src, dst, count);
                         dst_ptr += count;
                     }
                     else

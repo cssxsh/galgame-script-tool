@@ -114,5 +114,23 @@ namespace ATool
 
             return new string(chars);
         }
+
+        public static void CopyOverlapped(this byte[] data, int src, int dst, int count)
+        {
+            if (dst > src)
+            {
+                while (count > 0)
+                {
+                    var preceding = Math.Min(dst - src, count);
+                    Buffer.BlockCopy(data, src, data, dst, preceding);
+                    dst += preceding;
+                    count -= preceding;
+                }
+            }
+            else
+            {
+                Buffer.BlockCopy(data, src, data, dst, count);
+            }
+        }
     }
 }
