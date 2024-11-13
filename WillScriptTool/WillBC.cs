@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using ATool;
 using ImageMagick;
@@ -85,34 +87,34 @@ namespace Will
                     continue;
                 }
 
-                var src = 0;
+                var src = dst;
                 switch (count & 0xC0)
                 {
                     case 0x00:
                     {
-                        var offset = (count >> 0x3) & 0x07;
-                        count &= 0x7;
+                        var offset = (count >> 0x03) & 0x07;
+                        count &= 0x07;
                         count = count != 0x07
                             ? count + 0x02
                             : reader.ReadByte();
-                        src = dst - 0x01 - offset;
+                        src -= 0x01 + offset;
                     }
                         break;
                     case 0x40:
                     {
-                        var offset = (count >> 0x2) & 0x0F;
-                        count &= 0x3;
+                        var offset = (count >> 0x02) & 0x0F;
+                        count &= 0x03;
                         count = count != 0x03
                             ? count + 0x02
                             : reader.ReadByte();
-                        src = dst - Stride + offset - 0x08;
+                        src -= 0x08 + Stride - offset;
                     }
                         break;
                     case 0xC0:
                     {
                         var offset = (count + (reader.ReadByte() << 0x05)) & 0x1F;
                         count = reader.ReadByte();
-                        src = dst - 0x01 - offset;
+                        src -= 0x01 + offset;
                     }
                         break;
                     default:
@@ -122,7 +124,7 @@ namespace Will
                         count = count != 0x03
                             ? count + 0x02
                             : reader.ReadByte();
-                        src = dst - Stride * 0x02 + offset - 0x08;
+                        src -= 0x08 + Stride * 0x02 - offset;
                     }
                         break;
                 }
@@ -132,16 +134,16 @@ namespace Will
                 dst += count;
             }
 
-            var size = BitsPerPixel / 8;
-            if (size <= 1) return;
+            var depth = BitsPerPixel / 8;
+            if (depth <= 1) return;
             for (var y = 0; y < Height; y++)
             {
                 for (var x = 1; x < Width; x++)
                 {
-                    var pos = y * Stride + x * size;
-                    for (var i = 0; i < size; i++)
+                    var pos = y * Stride + x * depth;
+                    for (var i = 0; i < depth; i++)
                     {
-                        Pixels[pos + i] += Pixels[pos + i - size];
+                        Pixels[pos + i] += Pixels[pos + i - depth];
                     }
                 }
 
@@ -165,6 +167,193 @@ namespace Will
             image.Page = new MagickGeometry(OffsetX, OffsetY, Width, Height);
             image.Quality = 100;
             return image;
+        }
+
+        public byte[] ToBytes()
+        {
+            var buffer = new byte[0x0000_003E];
+            using var stream = new MemoryStream(buffer);
+            using var writer = new BinaryWriter(stream);
+            writer.Write(Encoding.ASCII.GetBytes("BC"));
+            writer.Write(0x0000_00000);
+            writer.Write(OffsetX);
+            writer.Write(OffsetY);
+            writer.Write(0x0000_0036);
+            writer.Write(0x0000_0028);
+            writer.Write(Width);
+            writer.Write(Height);
+            writer.Write((ushort)0x0001);
+            writer.Write(BitsPerPixel);
+            writer.Write(OffsetX == 0 && OffsetY == 0 ? 0x0000_0000 : 0x0000_0003);
+            writer.Write(Pixels.Length);
+
+            stream.Position = 0x0000_0002E;
+            writer.Write(Colors);
+
+            stream.Position = 0x0000_00036;
+            writer.Write(Encoding.ASCII.GetBytes("TX04"));
+            writer.Write(Stride);
+            writer.Write((ushort)Height);
+
+            var pixels = (byte[])Pixels.Clone();
+            var depth = BitsPerPixel / 8;
+            if (depth > 1)
+            {
+                Array.Reverse(pixels);
+                for (var y = 0; y < Height; y++)
+                {
+                    Array.Reverse(pixels, y * Stride, Stride);
+                    for (var x = 1; x < Width; x++)
+                    {
+                        var pos = y * Stride + (Width - x) * depth;
+                        for (var i = 0; i < depth; i++)
+                        {
+                            pixels[pos + i] -= pixels[pos + i - depth];
+                        }
+                    }
+                }
+            }
+
+            var temp = new List<byte>(pixels.Length);
+            var wait = new List<byte>(0x20);
+            temp.AddRange(pixels.Take(0x02));
+            var dst = 0x0000_0002;
+
+            while (dst < pixels.Length)
+            {
+                var used = int.MinValue;
+                var data = Array.Empty<byte>();
+                
+                // 0x00
+                for (var offset = 0x08; offset > 0x00; offset--)
+                {
+                    var src = dst - offset;
+                    if (src < 0) continue;
+                    var count = 0;
+                    while (dst + count < pixels.Length && pixels[src + count % (dst - src)] == pixels[dst + count]) count++;
+                    if (count < 0x02) continue;
+                    if (count > 0xFF) count = 0xFF;
+                    var mask = 0x00;
+                    mask |= (offset - 0x01) << 0x03;
+                    if (count > 0x08)
+                    {
+                        if (count <= used) continue;
+                        mask |= 0x07;
+                        data = new[] { (byte)mask, (byte)count };
+                    }
+                    else
+                    {
+                        if (count <= used) continue;
+                        mask |= count - 0x02;
+                        data = new[] { (byte)mask };
+                    }
+                    used = count;
+                }
+
+                // 0x40
+                for (var offset = 0x00; offset < 0x10; offset++)
+                {
+                    var src = dst - Stride - 0x08 + offset;
+                    if (src < 0) continue;
+                    var count = 0;
+                    while (dst + count < pixels.Length && pixels[src + count % (dst - src)] == pixels[dst + count]) count++;
+                    if (count < 0x02) continue;
+                    if (count > 0xFF) count = 0xFF;
+                    var mask = 0x40;
+                    mask |= offset << 0x02;
+                    if (count < 0x05)
+                    {
+                        if (count <= used) continue;
+                        mask |= count - 0x02;
+                        data = new[] { (byte)mask };
+                    }
+                    else
+                    {
+                        if (count <= used) continue;
+                        mask |= 0x03;
+                        data = new[] { (byte)mask, (byte)count };
+                    }
+                    used = count;
+                }
+
+                // 0x80
+                for (var offset = 0x00; offset < 0x10; offset++)
+                {
+                    var src = dst - Stride * 2 - 0x08 + offset;
+                    if (src < 0) continue;
+                    var count = 0;
+                    while (dst + count < pixels.Length && pixels[src + count % (dst - src)] == pixels[dst + count]) count++;
+                    if (count < 0x02) continue;
+                    if (count > 0xFF) count = 0xFF;
+                    var mask = 0x80;
+                    mask |= offset << 0x02;
+                    if (count < 0x05)
+                    {
+                        if (count <= used) continue;
+                        mask |= count - 0x02;
+                        data = new[] { (byte)mask };
+                    }
+                    else
+                    {
+                        if (count <= used) continue;
+                        mask |= 0x03;
+                        data = new[] { (byte)mask, (byte)count };
+                    }
+                    used = count;
+                }
+
+                // 0xC0
+                for (var offset = 0x1F; offset > 0x00; offset--)
+                {
+                    var src = dst - offset;
+                    if (src < 0) continue;
+                    var count = 0;
+                    while (dst + count < pixels.Length && pixels[src + count % (dst - src)] == pixels[dst + count]) count++;
+                    if (count < 0x02) continue;
+                    if (count > 0xFF) count = 0xFF;
+                    var mask = 0xC0;
+                    mask |= offset - 0x01;
+                    if (count <= used) continue;
+
+                    data = new[] { (byte)mask, (byte)0, (byte)count };
+                    used = count;
+                }
+
+                if (used >= -1)
+                {
+                    if (wait.Count > 0)
+                    {
+                        var mask = 0xE0;
+                        mask |= wait.Count - 0x01;
+                        temp.Add((byte)mask);
+                        temp.AddRange(wait);
+                        wait.Clear();
+                    }
+
+                    dst += used;
+                    temp.AddRange(data);
+                }
+                else
+                {
+                    wait.Add(pixels[dst]);
+                    dst++;
+                    if (wait.Count != 0x20 && dst != pixels.Length) continue;
+                    
+                    var mask = 0xE0;
+                    mask |= wait.Count - 0x01;
+                    temp.Add((byte)mask);
+                    temp.AddRange(wait);
+                    wait.Clear();
+                }
+            }
+
+            var size = buffer.Length + temp.Count;
+            stream.Position = 0x0000_0002;
+            writer.Write(size);
+            Array.Resize(ref buffer, size);
+            temp.CopyTo(buffer, 0x0000_003E);
+
+            return buffer;
         }
     }
 }
