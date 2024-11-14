@@ -194,11 +194,70 @@ namespace Will
             var length = pixels.Length;
             while (length > 0x02 && pixels[length - 0x01] == 0x00) length--;
 
-            var stack = new Stack<byte>(pixels.Length);
+            var stack = new Stack<CompressBlock>(pixels.Length);
             var result = Array.Empty<byte>();
             var dp = new Dictionary<int, int>();
             var stride = (int)Stride;
-            Compress(pixels.Length);
+            var capacity = 0;
+            var next = false;
+            while (stack.Count > 0 || !next)
+            {
+                if (length == 0x02)
+                {
+                    if (result.Length == 0x00 || result.Length > capacity) Build();
+                    next = true;
+                }
+
+                if (!next)
+                {
+                    if (dp.TryGetValue(length, out var value) && value <= capacity)
+                    {
+                        next = true;
+                        continue;
+                    }
+
+                    var block = Find(0xFF);
+                    if (block.Count == 0x00)
+                    {
+                        next = true;
+                        continue;
+                    }
+
+                    stack.Push(block);
+                    length -= stack.Peek().Count;
+                    capacity += stack.Peek().Size;
+                    continue;
+                }
+
+                var current = stack.Pop();
+                length += current.Count;
+                capacity -= current.Size;
+                if (current.Flag == 0xE0 && current.Count >= 0x03)
+                {
+                    var count = current.Count + 1;
+                    if (count > 0x20 || length - count < 0x02)
+                    {
+                        if (!dp.TryGetValue(length, out var value) || value > capacity)
+                        {
+                            dp[length] = capacity;
+                        }
+                        continue;
+                    }
+
+                    var block = new CompressBlock(0xE0, length - count, count);
+                    stack.Push(block);
+                }
+                else
+                {
+                    var block = Find(current.Count - 1);
+                    if (block.Count == 0x00) continue;
+                    stack.Push(block);
+                }
+
+                next = false;
+                length -= stack.Peek().Count;
+                capacity += stack.Peek().Size;
+            }
 
             var size = 0x0000_0040 + result.Length;
             var buffer = new byte[size];
@@ -230,25 +289,13 @@ namespace Will
 
             return buffer;
 
-            void Compress(int limit)
+            CompressBlock Find(int limit)
             {
-                if (limit == 0x02)
+                var e0 = stack.Count == 0x00 || stack.Peek().Flag != 0xE0 || stack.Peek().Count == 0x20;
+                for (var count = limit; count > 0x01; count--)
                 {
-                    if (result.Length == 0x00 || result.Length > stack.Count) result = stack.ToArray();
-                    return;
-                }
-
-                if (dp.TryGetValue(limit, out var value) && value <= stack.Count) return;
-                var current = stack.Count;
-                var e0 = current == 0x00 || stack.Peek() < 0xE0 || stack.Peek() == 0xFF;
-
-                for (var count = 0xFF; count > 0x01; count--)
-                {
-                    var dst = limit - count;
+                    var dst = length - count;
                     if (dst < 0x02) continue;
-                    if (dp.TryGetValue(dst, out var prev) && prev <= current + (count > 0x08 ? 2 : 1)) continue;
-
-                    var used = 0x00;
 
                     // 0x00
                     for (var offset = Math.Min(0x08, dst); offset > 0x00; offset--)
@@ -257,132 +304,159 @@ namespace Will
                         var x = 0;
                         while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
                         if (x < count) continue;
-                        while (used-- > 0x00) stack.Pop();
-                        var mask = 0x00;
-                        mask |= (offset - 0x01) << 0x03;
-                        if (count < 0x09)
-                        {
-                            used = 0x01;
-                            mask |= count - 0x02;
-                        }
-                        else
-                        {
-                            used = 0x02;
-                            mask |= 0x07;
-                            stack.Push((byte)count);
-                        }
-
-                        stack.Push((byte)mask);
-                        break;
+                        // if (x != count && stack.Peek().Flag == 0x00) continue;
+                        return new CompressBlock(0x00, offset, count);
                     }
 
                     // 0x40
                     for (var offset = Math.Min(stride + 0x08, dst); offset > stride - 0x08; offset--)
                     {
-                        if (used != 0) break;
                         var src = dst - offset;
                         var x = 0;
                         while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
                         if (x < count) continue;
-                        while (used-- > 0x00) stack.Pop();
-                        var mask = 0x40;
-                        mask |= (stride + 0x08 - offset) << 0x02;
-                        if (count < 0x05)
-                        {
-                            used = 0x01;
-                            mask |= count - 0x02;
-                        }
-                        else
-                        {
-                            used = 0x02;
-                            mask |= 0x03;
-                            stack.Push((byte)count);
-                        }
-
-                        stack.Push((byte)mask);
-                        break;
+                        // if (x != count && stack.Peek().Flag == 0x40) continue;
+                        return new CompressBlock(0x40, offset, count);
                     }
 
                     // 0x80
                     for (var offset = Math.Min(stride * 0x02 + 0x08, dst); offset > stride * 0x02 - 0x08; offset--)
                     {
-                        if (used != 0) break;
                         var src = dst - offset;
                         var x = 0;
                         while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
                         if (x < count) continue;
-                        while (used-- > 0x00) stack.Pop();
-                        var mask = 0x80;
-                        mask |= (stride * 0x02 + 0x08 - offset) << 0x02;
-                        if (count < 0x05)
-                        {
-                            used = 0x01;
-                            mask |= count - 0x02;
-                        }
-                        else
-                        {
-                            used = 0x02;
-                            mask |= 0x03;
-                            stack.Push((byte)count);
-                        }
-
-                        stack.Push((byte)mask);
-                        break;
+                        // if (x != count && stack.Peek().Flag == 0x80) continue;
+                        return new CompressBlock(0x80, offset, count);
                     }
 
                     // 0xC0
                     for (var offset = Math.Min(0x20, dst); offset > 0x08; offset--)
                     {
-                        if (used != 0) break;
                         var src = dst - offset;
                         var x = 0;
                         while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
                         if (x < count) continue;
-                        while (used-- > 0x00) stack.Pop();
-                        var mask = 0xC0;
-                        mask |= offset - 0x01;
-                        used = 0x03;
-                        stack.Push((byte)count);
-                        stack.Push(0);
-                        stack.Push((byte)mask);
-                        break;
+                        // if (x != count && stack.Peek().Flag == 0xC0) continue;
+                        return new CompressBlock(0xC0, offset, count);
                     }
 
                     // 0xE0
-                    if (e0 && count < 0x03 && used == 0)
+                    if (e0 && count < 0x03)
                     {
-                        var mask = 0xE0;
-                        mask |= count - 0x01;
-                        for (var x = 0; x < count; x++) stack.Push(pixels[limit - x - 1]);
-                        stack.Push((byte)mask);
-                        used = count + 1;
+                        return new CompressBlock(0xE0, dst, count);
                     }
-
-                    if (used == 0x00) continue;
-                    Compress(dst);
-                    while (used-- > 0x00) stack.Pop();
                 }
 
-                // 0xE0
-                if (!e0) return;
-                for (var count = 0x03; count <= 0x20; count++)
-                {
-                    var dst = limit - count;
-                    if (dst < 0x02) continue;
-                    var used = count + 0x01;
-                    if (dp.TryGetValue(dst, out var prev) && prev <= current + used) continue;
-
-                    var mask = 0xE0;
-                    mask |= count - 0x01;
-                    for (var x = 0; x < count; x++) stack.Push(pixels[limit - x - 1]);
-                    if ((mask & 0xE0) != 0xE0) throw new Exception("...");
-                    stack.Push((byte)mask);
-                    Compress(dst);
-                    while (used-- > 0x00) stack.Pop();
-                }
-
-                dp[limit] = stack.Count;
+                return !e0 || length - 0x03 < 0x02
+                    ? new CompressBlock(0xE0, 0x00, 0x00)
+                    : new CompressBlock(0xE0, length - 0x03, 0x03);
             }
+
+            void Build()
+            {
+                result = new byte[capacity];
+                var p = 0x00;
+                foreach (var block in stack)
+                {
+                    switch (block.Flag)
+                    {
+                        case 0x00:
+                        {
+                            var mask = 0x00;
+                            mask |= (block.Offset - 0x01) << 0x03;
+                            if (block.Count < 0x09)
+                            {
+                                mask |= block.Count - 0x02;
+                                result[p++] = (byte)mask;
+                            }
+                            else
+                            {
+                                mask |= 0x07;
+                                result[p++] = (byte)mask;
+                                result[p++] = (byte)block.Count;
+                            }
+                        }
+                            break;
+                        case 0x40:
+                        {
+                            var mask = 0x40;
+                            mask |= (stride + 0x08 - block.Offset) << 0x02;
+                            if (block.Count < 0x05)
+                            {
+                                mask |= block.Count - 0x02;
+                                result[p++] = (byte)mask;
+                            }
+                            else
+                            {
+                                mask |= 0x03;
+                                result[p++] = (byte)mask;
+                                result[p++] = (byte)block.Count;
+                            }
+                        }
+                            break;
+                        case 0x80:
+                        {
+                            var mask = 0x80;
+                            mask |= (stride * 2 + 0x08 - block.Offset) << 0x02;
+                            if (block.Count < 0x05)
+                            {
+                                mask |= block.Count - 0x02;
+                                result[p++] = (byte)mask;
+                            }
+                            else
+                            {
+                                mask |= 0x03;
+                                result[p++] = (byte)mask;
+                                result[p++] = (byte)block.Count;
+                            }
+                        }
+                            break;
+                        case 0xC0:
+                        {
+                            var mask = 0xC0;
+                            mask |= block.Offset - 0x01;
+                            result[p++] = (byte)mask;
+                            result[p++] = 0x00;
+                            result[p++] = (byte)block.Count;
+                        }
+                            break;
+                        default:
+                        {
+                            var mask = 0xE0;
+                            mask |= block.Count - 0x01;
+                            result[p++] = (byte)mask;
+                            for (var x = 0; x < block.Count; x++) result[p++] = pixels[block.Offset + x];
+                        }
+                            break;
+                    }
+                }
+            }
+        }
+
+        private readonly struct CompressBlock
+        {
+            public readonly byte Flag;
+
+            public readonly int Offset;
+
+            public readonly int Count;
+
+            public CompressBlock(byte flag, int offset, int count)
+            {
+                Flag = flag;
+                Offset = offset;
+                Count = count;
+            }
+
+            public int Size => Flag switch
+            {
+                0x00 => Count < 0x09 ? 1 : 2,
+                0x40 => Count < 0x05 ? 1 : 2,
+                0x80 => Count < 0x05 ? 1 : 2,
+                0xC0 => 3,
+                _ => 1 + Count
+            };
         }
     }
 }
