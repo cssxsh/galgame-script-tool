@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
 using ATool;
 using ImageMagick;
@@ -196,164 +195,223 @@ namespace Will
             writer.Write((ushort)Height);
 
             var pixels = (byte[])Pixels.Clone();
-            var depth = BitsPerPixel / 8;
-            if (depth > 1)
+            var depth = BitsPerPixel switch
             {
-                Array.Reverse(pixels);
-                for (var y = 0; y < Height; y++)
+                0x0020 => BitsPerPixel / 0x08,
+                0x0018 => BitsPerPixel / 0x08,
+                _ => throw new FormatException($"unsupported bbp: {BitsPerPixel:X4}"),
+            };
+            Array.Reverse(pixels);
+            for (var y = 0; y < Height; y++)
+            {
+                Array.Reverse(pixels, y * Stride, Stride);
+                for (var x = 1; x < Width; x++)
                 {
-                    Array.Reverse(pixels, y * Stride, Stride);
-                    for (var x = 1; x < Width; x++)
+                    var pos = y * Stride + (Width - x) * depth;
+                    for (var i = 0; i < depth; i++)
                     {
-                        var pos = y * Stride + (Width - x) * depth;
-                        for (var i = 0; i < depth; i++)
-                        {
-                            pixels[pos + i] -= pixels[pos + i - depth];
-                        }
+                        pixels[pos + i] -= pixels[pos + i - depth];
                     }
                 }
             }
 
-            var temp = new List<byte>(pixels.Length);
-            var wait = new List<byte>(0x20);
-            temp.AddRange(pixels.Take(0x02));
-            var dst = 0x0000_0002;
+            // var length = pixels.Length;
+            // while (length > 0x02 && pixels[length - 0x01] == 0x00) length--;
 
-            while (dst < pixels.Length)
-            {
-                var used = int.MinValue;
-                var data = Array.Empty<byte>();
-                
-                // 0x00
-                for (var offset = 0x08; offset > 0x00; offset--)
-                {
-                    var src = dst - offset;
-                    if (src < 0) continue;
-                    var count = 0;
-                    while (dst + count < pixels.Length && pixels[src + count % (dst - src)] == pixels[dst + count]) count++;
-                    if (count < 0x02) continue;
-                    if (count > 0xFF) count = 0xFF;
-                    var mask = 0x00;
-                    mask |= (offset - 0x01) << 0x03;
-                    if (count > 0x08)
-                    {
-                        if (count <= used) continue;
-                        mask |= 0x07;
-                        data = new[] { (byte)mask, (byte)count };
-                    }
-                    else
-                    {
-                        if (count <= used) continue;
-                        mask |= count - 0x02;
-                        data = new[] { (byte)mask };
-                    }
-                    used = count;
-                }
+            var stack = new Stack<byte>(pixels.Length);
+            var result = Array.Empty<byte>();
+            var dp = new Dictionary<int, int>();
+            var stride = (int)Stride;
+            Compress(pixels.Length);
 
-                // 0x40
-                for (var offset = 0x00; offset < 0x10; offset++)
-                {
-                    var src = dst - Stride - 0x08 + offset;
-                    if (src < 0) continue;
-                    var count = 0;
-                    while (dst + count < pixels.Length && pixels[src + count % (dst - src)] == pixels[dst + count]) count++;
-                    if (count < 0x02) continue;
-                    if (count > 0xFF) count = 0xFF;
-                    var mask = 0x40;
-                    mask |= offset << 0x02;
-                    if (count < 0x05)
-                    {
-                        if (count <= used) continue;
-                        mask |= count - 0x02;
-                        data = new[] { (byte)mask };
-                    }
-                    else
-                    {
-                        if (count <= used) continue;
-                        mask |= 0x03;
-                        data = new[] { (byte)mask, (byte)count };
-                    }
-                    used = count;
-                }
-
-                // 0x80
-                for (var offset = 0x00; offset < 0x10; offset++)
-                {
-                    var src = dst - Stride * 2 - 0x08 + offset;
-                    if (src < 0) continue;
-                    var count = 0;
-                    while (dst + count < pixels.Length && pixels[src + count % (dst - src)] == pixels[dst + count]) count++;
-                    if (count < 0x02) continue;
-                    if (count > 0xFF) count = 0xFF;
-                    var mask = 0x80;
-                    mask |= offset << 0x02;
-                    if (count < 0x05)
-                    {
-                        if (count <= used) continue;
-                        mask |= count - 0x02;
-                        data = new[] { (byte)mask };
-                    }
-                    else
-                    {
-                        if (count <= used) continue;
-                        mask |= 0x03;
-                        data = new[] { (byte)mask, (byte)count };
-                    }
-                    used = count;
-                }
-
-                // 0xC0
-                for (var offset = 0x1F; offset > 0x00; offset--)
-                {
-                    var src = dst - offset;
-                    if (src < 0) continue;
-                    var count = 0;
-                    while (dst + count < pixels.Length && pixels[src + count % (dst - src)] == pixels[dst + count]) count++;
-                    if (count < 0x02) continue;
-                    if (count > 0xFF) count = 0xFF;
-                    var mask = 0xC0;
-                    mask |= offset - 0x01;
-                    if (count <= used) continue;
-
-                    data = new[] { (byte)mask, (byte)0, (byte)count };
-                    used = count;
-                }
-
-                if (used >= -1)
-                {
-                    if (wait.Count > 0)
-                    {
-                        var mask = 0xE0;
-                        mask |= wait.Count - 0x01;
-                        temp.Add((byte)mask);
-                        temp.AddRange(wait);
-                        wait.Clear();
-                    }
-
-                    dst += used;
-                    temp.AddRange(data);
-                }
-                else
-                {
-                    wait.Add(pixels[dst]);
-                    dst++;
-                    if (wait.Count != 0x20 && dst != pixels.Length) continue;
-                    
-                    var mask = 0xE0;
-                    mask |= wait.Count - 0x01;
-                    temp.Add((byte)mask);
-                    temp.AddRange(wait);
-                    wait.Clear();
-                }
-            }
-
-            var size = buffer.Length + temp.Count;
+            var size = buffer.Length + result.Length;
             stream.Position = 0x0000_0002;
             writer.Write(size);
             Array.Resize(ref buffer, size);
-            temp.CopyTo(buffer, 0x0000_003E);
+            result.CopyTo(buffer, 0x0000_003E);
 
             return buffer;
+
+            void Compress(int limit)
+            {
+                if (limit == 0x02)
+                {
+                    stack.Push(pixels[0x01]);
+                    stack.Push(pixels[0x00]);
+                    if (result.Length == 0x00 || result.Length > stack.Count) result = stack.ToArray();
+                    stack.Pop();
+                    stack.Pop();
+                    return;
+                }
+
+                var current = stack.Count;
+                if (((result.Length + 0x3E) & 0x0F) == 0x00) return;
+                var e0 = current == 0x00 || stack.Peek() < 0xE0 || stack.Peek() == 0xFF;
+
+                for (var count = 0xFF; count > 0x01; count--)
+                {
+                    var dst = limit - count;
+                    if (dst < 0x02) continue;
+                    dp.TryGetValue(dst, out var prev);
+                    if (prev == 0x00) prev = int.MaxValue;
+                    if (prev <= current + (count > 0x08 ? 2 : 1)) continue;
+                    // if (prev <= current + 1) continue;
+
+                    var used = 0x00;
+
+                    // 0x00
+                    for (var offset = Math.Min(0x08, dst); offset > 0x00; offset--)
+                    {
+                        // if (used != 0 && used <= (count < 0x09 ? 0x01 : 0x02)) break;
+                        var src = dst - offset;
+                        var x = 0;
+                        while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
+                        if (x < count) continue;
+                        while (used-- > 0x00) stack.Pop();
+                        var mask = 0x00;
+                        mask |= (offset - 0x01) << 0x03;
+                        if (count < 0x09)
+                        {
+                            used = 0x01;
+                            mask |= count - 0x02;
+                        }
+                        else
+                        {
+                            used = 0x02;
+                            mask |= 0x07;
+                            stack.Push((byte)count);
+                        }
+                        
+                        if ((mask & 0xC0) != 0x00) throw new Exception("...");
+                        stack.Push((byte)mask);
+                        break;
+                    }
+
+                    // 0x40
+                    for (var offset = Math.Min(stride + 0x08, dst); offset > stride - 0x08; offset--)
+                    {
+                        // if (used != 0 && used <= (count < 0x05 ? 0x01 : 0x02)) break;
+                        if (used != 0) break;
+                        var src = dst - offset;
+                        var x = 0;
+                        while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
+                        if (x < count) continue;
+                        while (used-- > 0x00) stack.Pop();
+                        var mask = 0x40;
+                        mask |= (stride + 0x08 - offset) << 0x02;
+                        if (count < 0x05)
+                        {
+                            used = 0x01;
+                            mask |= count - 0x02;
+                        }
+                        else
+                        {
+                            used = 0x02;
+                            mask |= 0x03;
+                            stack.Push((byte)count);
+                        }
+
+                        if ((mask & 0xC0) != 0x40) throw new Exception("...");
+                        stack.Push((byte)mask);
+                        break;
+                    }
+
+                    // 0x80
+                    for (var offset = Math.Min(stride * 0x02 + 0x08, dst); offset > stride * 0x02 - 0x08; offset--)
+                    {
+                        // if (used != 0 && used <= (count < 0x05 ? 0x01 : 0x02)) break;
+                        if (used != 0) break;
+                        var src = dst - offset;
+                        var x = 0;
+                        while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
+                        if (x < count) continue;
+                        while (used-- > 0x00) stack.Pop();
+                        var mask = 0x80;
+                        mask |= (stride * 0x02 + 0x08 - offset) << 0x02;
+                        if (count < 0x05)
+                        {
+                            used = 0x01;
+                            mask |= count - 0x02;
+                        }
+                        else
+                        {
+                            used = 0x02;
+                            mask |= 0x03;
+                            stack.Push((byte)count);
+                        }
+
+                        if ((mask & 0xC0) != 0x80) throw new Exception("...");
+                        stack.Push((byte)mask);
+                        break;
+                    }
+
+                    // 0xC0
+                    for (var offset = Math.Min(0x20, dst); offset > 0x08; offset--)
+                    {
+                        // if (used != 0 && used <= 0x03) break;
+                        if (used != 0) break;
+                        var src = dst - offset;
+                        var x = 0;
+                        while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
+                        if (x < count) continue;
+                        while (used-- > 0x00) stack.Pop();
+                        var mask = 0xC0;
+                        mask |= offset - 0x01;
+                        used = 0x03;
+                        if ((mask & 0xC0) != 0xC0) throw new Exception("...");
+                        stack.Push((byte)count);
+                        stack.Push(0);
+                        stack.Push((byte)mask);
+                        break;
+                    }
+
+                    // 0xE0
+                    if (e0 && count < 0x03 && used == 0)
+                    {
+                        var mask = 0xE0;
+                        mask |= count - 0x01;
+                        for (var x = 0; x < count; x++) stack.Push(pixels[limit - x - 1]);
+                        if ((mask & 0xE0) != 0xE0) throw new Exception("...");
+                        stack.Push((byte)mask);
+                        used = count + 1;
+                    }
+
+                    if (current + used != stack.Count) throw new Exception("...");
+                    if (used == 0x00) continue;
+                    if (prev > stack.Count)
+                    {
+                        Compress(dst);
+                        if (result.Length != 0x00) dp[dst] = stack.Count;
+                    }
+
+                    while (used-- > 0x00) stack.Pop();
+                }
+
+                // 0xE0
+                if (!e0) return;
+                for (var count = 0x03; count <= 0x20; count++)
+                {
+                    var dst = limit - count;
+                    if (dst < 0x02) continue;
+                    var used = count + 0x01;
+
+                    dp.TryGetValue(dst, out var prev);
+                    if (prev == 0x00) prev = int.MaxValue;
+                    if (prev < current + used) continue;
+
+                    var mask = 0xE0;
+                    mask |= count - 0x01;
+                    for (var x = 0; x < count; x++) stack.Push(pixels[limit - x - 1]);
+                    if ((mask & 0xE0) != 0xE0) throw new Exception("...");
+                    stack.Push((byte)mask);
+                    if (current + used != stack.Count) throw new Exception("...");
+                    Compress(dst);
+                    if (result.Length != 0x00) dp[dst] = stack.Count;
+                    while (used-- > 0x00) stack.Pop();
+                }
+
+                if (result.Length == 0x00) throw new Exception("...");
+            }
         }
     }
 }
