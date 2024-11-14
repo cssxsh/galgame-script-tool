@@ -170,30 +170,6 @@ namespace Will
 
         public byte[] ToBytes()
         {
-            var buffer = new byte[0x0000_003E];
-            using var stream = new MemoryStream(buffer);
-            using var writer = new BinaryWriter(stream);
-            writer.Write(Encoding.ASCII.GetBytes("BC"));
-            writer.Write(0x0000_00000);
-            writer.Write(OffsetX);
-            writer.Write(OffsetY);
-            writer.Write(0x0000_0036);
-            writer.Write(0x0000_0028);
-            writer.Write(Width);
-            writer.Write(Height);
-            writer.Write((ushort)0x0001);
-            writer.Write(BitsPerPixel);
-            writer.Write(OffsetX == 0 && OffsetY == 0 ? 0x0000_0000 : 0x0000_0003);
-            writer.Write(Pixels.Length);
-
-            stream.Position = 0x0000_0002E;
-            writer.Write(Colors);
-
-            stream.Position = 0x0000_00036;
-            writer.Write(Encoding.ASCII.GetBytes("TX04"));
-            writer.Write(Stride);
-            writer.Write((ushort)Height);
-
             var pixels = (byte[])Pixels.Clone();
             var depth = BitsPerPixel switch
             {
@@ -215,8 +191,8 @@ namespace Will
                 }
             }
 
-            // var length = pixels.Length;
-            // while (length > 0x02 && pixels[length - 0x01] == 0x00) length--;
+            var length = pixels.Length;
+            while (length > 0x02 && pixels[length - 0x01] == 0x00) length--;
 
             var stack = new Stack<byte>(pixels.Length);
             var result = Array.Empty<byte>();
@@ -224,11 +200,33 @@ namespace Will
             var stride = (int)Stride;
             Compress(pixels.Length);
 
-            var size = buffer.Length + result.Length;
-            stream.Position = 0x0000_0002;
+            var size = 0x0000_0040 + result.Length;
+            var buffer = new byte[size];
+            using var stream = new MemoryStream(buffer);
+            using var writer = new BinaryWriter(stream);
+            writer.Write(Encoding.ASCII.GetBytes("BC"));
             writer.Write(size);
-            Array.Resize(ref buffer, size);
-            result.CopyTo(buffer, 0x0000_003E);
+            writer.Write(OffsetX);
+            writer.Write(OffsetY);
+            writer.Write(0x0000_0036);
+            writer.Write(0x0000_0028);
+            writer.Write(Width);
+            writer.Write(Height);
+            writer.Write((ushort)0x0001);
+            writer.Write(BitsPerPixel);
+            writer.Write(OffsetX == 0 && OffsetY == 0 ? 0x0000_0000 : 0x0000_0003);
+            writer.Write(Pixels.Length);
+
+            stream.Position = 0x0000_0002E;
+            writer.Write(Colors);
+
+            stream.Position = 0x0000_00036;
+            writer.Write(Encoding.ASCII.GetBytes("TX04"));
+            writer.Write(Stride);
+            writer.Write((ushort)Height);
+            writer.Write(pixels[0]);
+            writer.Write(pixels[1]);
+            writer.Write(result);
 
             return buffer;
 
@@ -236,33 +234,25 @@ namespace Will
             {
                 if (limit == 0x02)
                 {
-                    stack.Push(pixels[0x01]);
-                    stack.Push(pixels[0x00]);
                     if (result.Length == 0x00 || result.Length > stack.Count) result = stack.ToArray();
-                    stack.Pop();
-                    stack.Pop();
                     return;
                 }
 
+                if (dp.TryGetValue(limit, out var value) && value <= stack.Count) return;
                 var current = stack.Count;
-                if (((result.Length + 0x3E) & 0x0F) == 0x00) return;
                 var e0 = current == 0x00 || stack.Peek() < 0xE0 || stack.Peek() == 0xFF;
 
                 for (var count = 0xFF; count > 0x01; count--)
                 {
                     var dst = limit - count;
                     if (dst < 0x02) continue;
-                    dp.TryGetValue(dst, out var prev);
-                    if (prev == 0x00) prev = int.MaxValue;
-                    if (prev <= current + (count > 0x08 ? 2 : 1)) continue;
-                    // if (prev <= current + 1) continue;
+                    if (dp.TryGetValue(dst, out var prev) && prev <= current + (count > 0x08 ? 2 : 1)) continue;
 
                     var used = 0x00;
 
                     // 0x00
                     for (var offset = Math.Min(0x08, dst); offset > 0x00; offset--)
                     {
-                        // if (used != 0 && used <= (count < 0x09 ? 0x01 : 0x02)) break;
                         var src = dst - offset;
                         var x = 0;
                         while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
@@ -281,8 +271,7 @@ namespace Will
                             mask |= 0x07;
                             stack.Push((byte)count);
                         }
-                        
-                        if ((mask & 0xC0) != 0x00) throw new Exception("...");
+
                         stack.Push((byte)mask);
                         break;
                     }
@@ -290,7 +279,6 @@ namespace Will
                     // 0x40
                     for (var offset = Math.Min(stride + 0x08, dst); offset > stride - 0x08; offset--)
                     {
-                        // if (used != 0 && used <= (count < 0x05 ? 0x01 : 0x02)) break;
                         if (used != 0) break;
                         var src = dst - offset;
                         var x = 0;
@@ -311,7 +299,6 @@ namespace Will
                             stack.Push((byte)count);
                         }
 
-                        if ((mask & 0xC0) != 0x40) throw new Exception("...");
                         stack.Push((byte)mask);
                         break;
                     }
@@ -319,7 +306,6 @@ namespace Will
                     // 0x80
                     for (var offset = Math.Min(stride * 0x02 + 0x08, dst); offset > stride * 0x02 - 0x08; offset--)
                     {
-                        // if (used != 0 && used <= (count < 0x05 ? 0x01 : 0x02)) break;
                         if (used != 0) break;
                         var src = dst - offset;
                         var x = 0;
@@ -340,7 +326,6 @@ namespace Will
                             stack.Push((byte)count);
                         }
 
-                        if ((mask & 0xC0) != 0x80) throw new Exception("...");
                         stack.Push((byte)mask);
                         break;
                     }
@@ -348,7 +333,6 @@ namespace Will
                     // 0xC0
                     for (var offset = Math.Min(0x20, dst); offset > 0x08; offset--)
                     {
-                        // if (used != 0 && used <= 0x03) break;
                         if (used != 0) break;
                         var src = dst - offset;
                         var x = 0;
@@ -358,7 +342,6 @@ namespace Will
                         var mask = 0xC0;
                         mask |= offset - 0x01;
                         used = 0x03;
-                        if ((mask & 0xC0) != 0xC0) throw new Exception("...");
                         stack.Push((byte)count);
                         stack.Push(0);
                         stack.Push((byte)mask);
@@ -371,19 +354,12 @@ namespace Will
                         var mask = 0xE0;
                         mask |= count - 0x01;
                         for (var x = 0; x < count; x++) stack.Push(pixels[limit - x - 1]);
-                        if ((mask & 0xE0) != 0xE0) throw new Exception("...");
                         stack.Push((byte)mask);
                         used = count + 1;
                     }
 
-                    if (current + used != stack.Count) throw new Exception("...");
                     if (used == 0x00) continue;
-                    if (prev > stack.Count)
-                    {
-                        Compress(dst);
-                        if (result.Length != 0x00) dp[dst] = stack.Count;
-                    }
-
+                    Compress(dst);
                     while (used-- > 0x00) stack.Pop();
                 }
 
@@ -394,23 +370,18 @@ namespace Will
                     var dst = limit - count;
                     if (dst < 0x02) continue;
                     var used = count + 0x01;
-
-                    dp.TryGetValue(dst, out var prev);
-                    if (prev == 0x00) prev = int.MaxValue;
-                    if (prev < current + used) continue;
+                    if (dp.TryGetValue(dst, out var prev) && prev <= current + used) continue;
 
                     var mask = 0xE0;
                     mask |= count - 0x01;
                     for (var x = 0; x < count; x++) stack.Push(pixels[limit - x - 1]);
                     if ((mask & 0xE0) != 0xE0) throw new Exception("...");
                     stack.Push((byte)mask);
-                    if (current + used != stack.Count) throw new Exception("...");
                     Compress(dst);
-                    if (result.Length != 0x00) dp[dst] = stack.Count;
                     while (used-- > 0x00) stack.Pop();
                 }
 
-                if (result.Length == 0x00) throw new Exception("...");
+                dp[limit] = stack.Count;
             }
         }
     }
