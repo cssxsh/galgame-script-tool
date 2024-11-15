@@ -38,6 +38,7 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="IkuraScript.cs"/>
+        <Compile Include="IkuraSecret.cs"/>
         <Compile Include="Program.cs"/>
         <Compile Include="Properties\AssemblyInfo.cs"/>
     </ItemGroup>
@@ -47,6 +48,9 @@
             <Name>ATool</Name>
             <Private>False</Private>
         </ProjectReference>
+    </ItemGroup>
+    <ItemGroup>
+        <EmbeddedResource Include="Resources\*.secret"/>
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/>
     <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -58,8 +58,9 @@ namespace Ikura
             switch (mode)
             {
                 case "-e":
-                    _encoding = _encoding ?? Encoding.GetEncoding("SHIFT-JIS");
+                    _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
+                    Environment.SetEnvironmentVariable("ISF_PATH", path);
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream))
                     {
@@ -87,8 +88,9 @@ namespace Ikura
 
                     break;
                 case "-i":
-                    _encoding = _encoding ?? Encoding.GetEncoding("GBK");
+                    _encoding ??= Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
+                    Environment.SetEnvironmentVariable("ISF_PATH", path);
                     using (var stream = File.OpenRead(path))
                     using (var reader = new BinaryReader(stream))
                     {
@@ -181,7 +183,7 @@ namespace Ikura
         private static void WriteIkuraScripts(this BinaryWriter writer, IkuraScript[] scripts)
         {
             var offset = (uint)(0x0000_0020 + 0x14 * scripts.Length);
-            offset = (offset + 0x0F) & 0xFFFF_FFF0;
+            offset = (offset + 0x0F) & ~0x0Fu;
             var buffer = new byte[0x0C];
             writer.Write(_encoding.GetBytes(FileHead));
             writer.Write(scripts.Length);
@@ -205,7 +207,7 @@ namespace Ikura
 
                 writer.BaseStream.Position = offset;
                 writer.Write(bytes);
-                offset += (uint)(bytes.Length + 0x0F) & 0xFFFF_FFF0u;
+                offset += (uint)(bytes.Length + 0x0F) & ~0x0Fu;
                 var empty = new byte[offset - writer.BaseStream.Position];
                 writer.Write(empty);
             }

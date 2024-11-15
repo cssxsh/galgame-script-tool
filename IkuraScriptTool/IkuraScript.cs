@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
+using System.Text;
 
 namespace Ikura
 {
@@ -21,19 +23,47 @@ namespace Ikura
         public readonly int[] Labels;
 
         public readonly KeyValuePair<Instruction, byte[]>[] Commands;
+        
+        public readonly byte[] Secret;
 
         public IkuraScript(string name, byte[] bytes)
         {
             Name = name;
-
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
+            var end = Encoding.ASCII.GetString(bytes, bytes.Length - 0x10, 0x10);
+            Secret = null;
+            if (end == "SECRETFILTER100a")
             {
-                Offset = reader.ReadUInt32();
-                Version = reader.ReadUInt16();
-                Key = reader.ReadByte();
-                Unused = reader.ReadByte();
+                var temp = new byte[0x10];
+                foreach (var secret in GetKnownSecrets())
+                {
+                    Array.Copy(bytes, 0, temp, 0, temp.Length);
+                    IkuraSecret.Handle(temp, secret);
+                    switch (BitConverter.ToUInt16(temp, 0x04))
+                    {
+                        case 0x9795:
+                        case 0xD197:
+                        case 0xCE89:
+                            break;
+                        default:
+                            continue;
+                    }
+
+                    _secret = Secret = secret;
+                    break;
+                }
+
+                if (Secret == null) throw new NotSupportedException("no secret match");
+                
+                Array.Resize(ref bytes, bytes.Length - 0x10);
+                IkuraSecret.Handle(bytes, Secret);
             }
+
+            using var stream = new MemoryStream(bytes);
+            using var reader = new BinaryReader(stream);
+            Offset = reader.ReadUInt32();
+            Version = reader.ReadUInt16();
+            Key = reader.ReadByte();
+            Unused = reader.ReadByte();
 
             switch (Version)
             {
@@ -48,45 +78,42 @@ namespace Ikura
                     break;
             }
 
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
+            stream.Position = 8;
+            Labels = new int[(Offset - 8) / 4];
+            var table = new int[Labels.Length];
+            for (var i = 0; i < table.Length; i++)
             {
-                stream.Position = 8;
-                Labels = new int[(Offset - 8) / 4];
-                var table = new int[Labels.Length];
-                for (var i = 0; i < table.Length; i++)
-                {
-                    table[i] = reader.ReadInt32();
-                }
-
-                var commands = new List<KeyValuePair<Instruction, byte[]>>();
-
-                stream.Position = Offset;
-                while (stream.Position < bytes.Length)
-                {
-                    for (var j = 0; j < table.Length; j++)
-                    {
-                        if (table[j] != stream.Position - Offset) continue;
-                        Labels[j] = commands.Count;
-                    }
-
-                    var instruction = (Instruction)reader.ReadByte();
-                    var size = (int)reader.ReadByte();
-                    if (size > 0x7F)
-                    {
-                        size = ((size & 0x7F) << 8) | reader.ReadByte();
-                        size -= 3;
-                    }
-                    else
-                    {
-                        size -= 2;
-                    }
-
-                    commands.Add(new KeyValuePair<Instruction, byte[]>(instruction, reader.ReadBytes(size)));
-                }
-
-                Commands = commands.ToArray();
+                table[i] = reader.ReadInt32();
             }
+
+            var commands = new List<KeyValuePair<Instruction, byte[]>>();
+
+            stream.Position = Offset;
+            while (stream.Position < bytes.Length)
+            {
+                for (var j = 0; j < table.Length; j++)
+                {
+                    if (table[j] != stream.Position - Offset) continue;
+                    Labels[j] = commands.Count;
+                }
+
+                var instruction = (Instruction)reader.ReadByte();
+                var size = (int)reader.ReadByte();
+                if (size > 0x7F)
+                {
+                    size = ((size & 0x7F) << 8) | reader.ReadByte();
+                    size -= 3;
+                }
+                else
+                {
+                    size -= 2;
+                }
+
+                commands.Add(new KeyValuePair<Instruction, byte[]>(instruction, reader.ReadBytes(size)));
+                if (instruction == Instruction.LS && bytes.Skip((int)stream.Position).All(b => b == 0x00)) break;
+            }
+
+            Commands = commands.ToArray();
         }
 
         public byte[] ToBytes()
@@ -146,6 +173,11 @@ namespace Ikura
                     for (var i = 8; i < bytes.Length; i++) bytes[i] = (byte)(bytes[i] ^ Key);
                     break;
             }
+
+            if (Secret == null) return bytes;
+            IkuraSecret.Handle(bytes, Secret);
+            Array.Resize(ref bytes, bytes.Length + 0x10);
+            Encoding.ASCII.GetBytes("SECRETFILTER100a").CopyTo(bytes, bytes.Length - 0x10);
 
             return bytes;
         }
@@ -643,5 +675,39 @@ namespace Ikura
             0x83, 0x77, 0x83, 0x7a, 0x83, 0x7d, 0x83, 0x7e,
             0x83, 0x80, 0x83, 0x81, 0x83, 0x82, 0x83, 0x84
         };
+    
+        private static IEnumerable<byte[]> GetKnownSecrets()
+        {
+            if (_secret.Length != 0x00) yield return _secret;
+            
+            var assembly = typeof(Program).Assembly;
+            foreach (var name in assembly.GetManifestResourceNames())
+            {
+                if (!name.EndsWith(".secret")) continue;
+                Console.WriteLine($"try use secret by {name}");
+                using var stream = assembly.GetManifestResourceStream(name)
+                                   ?? throw new FileNotFoundException(name);
+                using var reader = new StreamReader(stream);
+                yield return Encoding.ASCII.GetBytes(reader.ReadToEnd());
+            }
+
+            var path = Environment.GetEnvironmentVariable("ISF_PATH") ?? ".";
+            foreach (var exe in Directory.GetFiles(path, "*.exe"))
+            {
+                using var steam = File.OpenRead(exe);
+                using var reader = new BinaryReader(steam);
+                while (steam.Position < steam.Length)
+                {
+                    if (reader.ReadUInt32() != 0x3042_4F55) continue;
+                    steam.Position -= 0x04;
+                    var bytes = reader.ReadBytes(0x0800);
+                    if (bytes.Any(b => b < 0x30 || b > 0x5A)) continue;
+                    Console.WriteLine($"try use secret from {exe}:{steam.Position - 0x0800:X8}");
+                    yield return bytes;
+                }
+            }
+        }
+        
+        private static volatile byte[] _secret = Array.Empty<byte>();
     }
 }
