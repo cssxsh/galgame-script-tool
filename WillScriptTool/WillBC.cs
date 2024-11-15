@@ -168,6 +168,23 @@ namespace Will
             return image;
         }
 
+        public void Merge(MagickImage image)
+        {
+            if (image.Width != Width || image.Height != Height)
+                throw new FormatException($"size no match: {image.Width}x{image.Height}");
+            var format = BitsPerPixel switch
+            {
+                0x0020 => "BGRA",
+                0x0018 => "BGR",
+                _ => throw new FormatException($"unsupported bbp: {BitsPerPixel:X4}"),
+            };
+            var pixels = image.GetPixels().ToByteArray(format) 
+                         ?? throw new FormatException($"get pixels<{format}> fail!");
+            if (pixels.Length != Pixels.Length) 
+                throw new FormatException($"unsupported pixels length: {pixels.Length}");
+            Array.Copy(pixels, 0, Pixels, 0, pixels.Length);
+        }
+
         public byte[] ToBytes()
         {
             var pixels = (byte[])Pixels.Clone();
@@ -192,7 +209,6 @@ namespace Will
             }
 
             var length = pixels.Length;
-            while (length > 0x02 && pixels[length - 0x01] == 0x00) length--;
 
             var stack = new Stack<CompressBlock>(pixels.Length);
             var result = Array.Empty<byte>();
@@ -204,7 +220,13 @@ namespace Will
             {
                 if (length == 0x02)
                 {
-                    if (result.Length == 0x00 || result.Length > capacity) Build();
+                    if (result.Length == 0x00 || result.Length > capacity)
+                    {
+                        result = Build();
+                        Debug.WriteLine($"pixels: {pixels.Length:X4} => {result.Length:X4}");
+                        if ((result.Length & 0x0F) == 0x00) break;
+                    }
+
                     next = true;
                 }
 
@@ -232,15 +254,12 @@ namespace Will
                 var current = stack.Pop();
                 length += current.Count;
                 capacity -= current.Size;
-                if (current.Flag == 0xE0 && current.Count >= 0x03)
+                if (current.Flag == 0xE0)
                 {
-                    var count = current.Count + 1;
+                    var count = current.Count + 0x01;
                     if (count > 0x20 || length - count < 0x02)
                     {
-                        if (!dp.TryGetValue(length, out var value) || value > capacity)
-                        {
-                            dp[length] = capacity;
-                        }
+                        if (!dp.TryGetValue(length, out var value) || value > capacity) dp[length] = capacity;
                         continue;
                     }
 
@@ -291,7 +310,6 @@ namespace Will
 
             CompressBlock Find(int limit)
             {
-                var e0 = stack.Count == 0x00 || stack.Peek().Flag != 0xE0 || stack.Peek().Count == 0x20;
                 for (var count = limit; count > 0x01; count--)
                 {
                     var dst = length - count;
@@ -340,22 +358,18 @@ namespace Will
                         // if (x != count && stack.Peek().Flag == 0xC0) continue;
                         return new CompressBlock(0xC0, offset, count);
                     }
-
-                    // 0xE0
-                    if (e0 && count < 0x03)
-                    {
-                        return new CompressBlock(0xE0, dst, count);
-                    }
                 }
 
-                return !e0 || length - 0x03 < 0x02
+                // 0xE0
+                var e0 = stack.Count == 0x00 || stack.Peek().Flag != 0xE0 || stack.Peek().Count == 0x20;
+                return !e0 || length - 0x02 < 0x02
                     ? new CompressBlock(0xE0, 0x00, 0x00)
-                    : new CompressBlock(0xE0, length - 0x03, 0x03);
+                    : new CompressBlock(0xE0, length - 0x02, 0x02);
             }
 
-            void Build()
+            byte[] Build()
             {
-                result = new byte[capacity];
+                var temp = new byte[capacity];
                 var p = 0x00;
                 foreach (var block in stack)
                 {
@@ -368,13 +382,13 @@ namespace Will
                             if (block.Count < 0x09)
                             {
                                 mask |= block.Count - 0x02;
-                                result[p++] = (byte)mask;
+                                temp[p++] = (byte)mask;
                             }
                             else
                             {
                                 mask |= 0x07;
-                                result[p++] = (byte)mask;
-                                result[p++] = (byte)block.Count;
+                                temp[p++] = (byte)mask;
+                                temp[p++] = (byte)block.Count;
                             }
                         }
                             break;
@@ -385,13 +399,13 @@ namespace Will
                             if (block.Count < 0x05)
                             {
                                 mask |= block.Count - 0x02;
-                                result[p++] = (byte)mask;
+                                temp[p++] = (byte)mask;
                             }
                             else
                             {
                                 mask |= 0x03;
-                                result[p++] = (byte)mask;
-                                result[p++] = (byte)block.Count;
+                                temp[p++] = (byte)mask;
+                                temp[p++] = (byte)block.Count;
                             }
                         }
                             break;
@@ -402,13 +416,13 @@ namespace Will
                             if (block.Count < 0x05)
                             {
                                 mask |= block.Count - 0x02;
-                                result[p++] = (byte)mask;
+                                temp[p++] = (byte)mask;
                             }
                             else
                             {
                                 mask |= 0x03;
-                                result[p++] = (byte)mask;
-                                result[p++] = (byte)block.Count;
+                                temp[p++] = (byte)mask;
+                                temp[p++] = (byte)block.Count;
                             }
                         }
                             break;
@@ -416,21 +430,25 @@ namespace Will
                         {
                             var mask = 0xC0;
                             mask |= block.Offset - 0x01;
-                            result[p++] = (byte)mask;
-                            result[p++] = 0x00;
-                            result[p++] = (byte)block.Count;
+                            temp[p++] = (byte)mask;
+                            temp[p++] = 0x00;
+                            temp[p++] = (byte)block.Count;
                         }
                             break;
-                        default:
+                        case 0xE0:
                         {
                             var mask = 0xE0;
                             mask |= block.Count - 0x01;
-                            result[p++] = (byte)mask;
-                            for (var x = 0; x < block.Count; x++) result[p++] = pixels[block.Offset + x];
+                            temp[p++] = (byte)mask;
+                            for (var x = 0; x < block.Count; x++) temp[p++] = pixels[block.Offset + x];
                         }
                             break;
+                        default:
+                            throw new FormatException($"block type: {block.Flag}");
                     }
                 }
+
+                return temp;
             }
         }
 

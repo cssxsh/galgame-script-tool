@@ -47,7 +47,7 @@ namespace Will
             }
         }
 
-        public MagickImageCollection ToImage(int width, int height)
+        public MagickImageCollection ToImages(int width, int height)
         {
             var collection = new MagickImageCollection();
             collection.Add(new MagickImage(new MagickColor("#66CCFF"), width, height));
@@ -67,6 +67,19 @@ namespace Will
             }
 
             return collection;
+        }
+
+        public void Merge(MagickImageCollection images)
+        {
+            if (images.Count - 1 != Items.Length) throw new FormatException($"count no match: {images.Count - 1}");
+            for (var i = 0; i < Items.Length; i++)
+            {
+                var image = images[i + 1];
+                if (image.Label != Items[i].Key) throw new FormatException($"layer no match: {image.Label}");
+                var bc = new WillBC(Items[i].Value);
+                bc.Merge(image as MagickImage);
+                Items[i] = new KeyValuePair<string, byte[]>(Items[i].Key, bc.ToBytes());
+            }
         }
     }
 }
