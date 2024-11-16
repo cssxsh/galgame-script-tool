@@ -96,7 +96,7 @@ namespace Will
             size += Items.Sum(item => 0x03 + encoding.GetByteCount(item.Key));
             size = (size + 0x04 + 0x0F) & ~0x0F;
             var offset = size;
-            size += Items.Sum(item => item.Key.Length);
+            size += Items.Sum(item => item.Value.Length);
             var result = new byte[size];
             
             using var steam = new MemoryStream(result);
