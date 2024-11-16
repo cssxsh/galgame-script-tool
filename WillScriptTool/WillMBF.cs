@@ -71,13 +71,16 @@ namespace Will
 
         public void Merge(MagickImageCollection images)
         {
-            if (images.Count - 1 != Items.Length) throw new FormatException($"count no match: {images.Count - 1}");
+            var dictionary = new Dictionary<string, MagickImage>();
+            for (var i = 1; i < images.Count; i++)
+            {
+                dictionary.Add(images[i].Label ?? $"L{i}", images[i] as MagickImage);
+            }
             for (var i = 0; i < Items.Length; i++)
             {
-                var image = images[i + 1];
-                if (image.Label != Items[i].Key) throw new FormatException($"layer no match: {image.Label}");
                 var bc = new WillBC(Items[i].Value);
-                bc.Merge(image as MagickImage);
+                if (!dictionary.TryGetValue(Items[i].Key, out var image)) continue;
+                bc.Merge(image);
                 Items[i] = new KeyValuePair<string, byte[]>(Items[i].Key, bc.ToBytes());
             }
         }
