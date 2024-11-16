@@ -22,11 +22,11 @@ namespace Will
 
         public readonly ushort BitsPerPixel;
 
+        private readonly uint _x1E;
+
         public readonly int Colors;
 
         public readonly byte[] Pixels;
-
-        public readonly ushort Stride;
 
         public WillBC(byte[] bytes)
         {
@@ -37,7 +37,6 @@ namespace Will
             if (header != "BC") throw new FormatException($"unsupported header: {header}");
             // 0x02 size
             var sizeOfBytes = reader.ReadUInt32();
-            Debug.WriteLine($"0x02: {sizeOfBytes:X8}");
             // 0x06
             OffsetX = reader.ReadInt16();
             // 0x08
@@ -46,22 +45,27 @@ namespace Will
             var data = reader.ReadUInt32();
             // 0x0E always 0x00000028
             var x0E = reader.ReadUInt32();
-            Debug.WriteLine($"0x0E: {x0E:X8}");
+            Debug.WriteLine($"BC:0E {x0E:X8}");
             // 0x12
             Width = reader.ReadInt32();
             // 0x16
             Height = reader.ReadInt32();
             // 0x1A always 0x0001
             var x1A = reader.ReadUInt16();
-            Debug.WriteLine($"0x1A: {x1A:X4}");
+            Debug.WriteLine($"BC:1A {x1A:X4}");
             // 0x1C
             BitsPerPixel = reader.ReadUInt16();
+            var depth = BitsPerPixel switch
+            {
+                0x0020 => BitsPerPixel / 0x08,
+                0x0018 => BitsPerPixel / 0x08,
+                _ => throw new FormatException($"unsupported bbp: {BitsPerPixel:X4}"),
+            };
             // 0x1E 0x00000003 or 0x00000000
-            var x1E = reader.ReadUInt32();
-            Debug.WriteLine($"0x1E: {x1E:X8}");
+            _x1E = reader.ReadUInt32();
             // 0x22
-            var countOfPixels = reader.ReadUInt32();
-            Pixels = new byte[countOfPixels];
+            var sizeOfPixels = reader.ReadUInt32();
+            Pixels = new byte[sizeOfPixels];
 
             steam.Position = 0x0000_0002E;
             Colors = reader.ReadInt32();
@@ -70,13 +74,15 @@ namespace Will
             steam.Position = data;
             var format = Encoding.ASCII.GetString(reader.ReadBytes(0x04));
             if (format != "TX04") throw new FormatException($"unsupported format: {format}");
-            Stride = reader.ReadUInt16(); // eq Width * BBP / 8
-            _ = reader.ReadUInt16(); // eq Height
+            var stride = reader.ReadUInt16(); // eq Width * BBP / 8
+            if (stride != Width * depth) throw new FormatException($"unsupported stride: {stride} != Width * depth");
+            var lines = reader.ReadUInt16();
+            if (lines != Height) throw new FormatException($"unsupported lines: {lines} != Height");
 
             // Decompress form https://github.com/morkt/GARbro
             var dst = 0x0000_0000;
             dst += steam.Read(Pixels, dst, 0x02);
-            while (dst < Pixels.Length && steam.Position < steam.Length)
+            while (dst < Pixels.Length && steam.Position < sizeOfBytes)
             {
                 var count = (int)reader.ReadByte();
                 if (0xE0 == (count & 0xE0))
@@ -106,7 +112,7 @@ namespace Will
                         count = count != 0x03
                             ? count + 0x02
                             : reader.ReadByte();
-                        src -= 0x08 + Stride - offset;
+                        src -= 0x08 + stride - offset;
                     }
                         break;
                     case 0xC0:
@@ -123,7 +129,7 @@ namespace Will
                         count = count != 0x03
                             ? count + 0x02
                             : reader.ReadByte();
-                        src -= 0x08 + Stride * 0x02 - offset;
+                        src -= 0x08 + stride * 0x02 - offset;
                     }
                         break;
                 }
@@ -133,20 +139,18 @@ namespace Will
                 dst += count;
             }
 
-            var depth = BitsPerPixel / 8;
-            if (depth <= 1) return;
             for (var y = 0; y < Height; y++)
             {
                 for (var x = 1; x < Width; x++)
                 {
-                    var pos = y * Stride + x * depth;
+                    var pos = y * stride + x * depth;
                     for (var i = 0; i < depth; i++)
                     {
                         Pixels[pos + i] += Pixels[pos + i - depth];
                     }
                 }
 
-                Array.Reverse(Pixels, y * Stride, Stride);
+                Array.Reverse(Pixels, y * stride, stride);
             }
 
             Array.Reverse(Pixels);
@@ -194,13 +198,14 @@ namespace Will
                 0x0018 => BitsPerPixel / 0x08,
                 _ => throw new FormatException($"unsupported bbp: {BitsPerPixel:X4}"),
             };
+            var stride = (ushort)(Width * depth);
             Array.Reverse(pixels);
             for (var y = 0; y < Height; y++)
             {
-                Array.Reverse(pixels, y * Stride, Stride);
+                Array.Reverse(pixels, y * stride, stride);
                 for (var x = 1; x < Width; x++)
                 {
-                    var pos = y * Stride + (Width - x) * depth;
+                    var pos = y * stride + (Width - x) * depth;
                     for (var i = 0; i < depth; i++)
                     {
                         pixels[pos + i] -= pixels[pos + i - depth];
@@ -213,7 +218,6 @@ namespace Will
             var stack = new Stack<CompressBlock>(pixels.Length);
             var result = Array.Empty<byte>();
             var dp = new Dictionary<int, int>();
-            var stride = (int)Stride;
             var capacity = 0;
             var next = false;
             while (stack.Count > 0 || !next)
@@ -278,7 +282,7 @@ namespace Will
                 capacity += stack.Peek().Size;
             }
 
-            var size = 0x0000_0040 + result.Length;
+            var size = 0x0000_0040 + ((result.Length + 0x0F) & ~0x0F);
             var buffer = new byte[size];
             using var stream = new MemoryStream(buffer);
             using var writer = new BinaryWriter(stream);
@@ -292,7 +296,7 @@ namespace Will
             writer.Write(Height);
             writer.Write((ushort)0x0001);
             writer.Write(BitsPerPixel);
-            writer.Write(OffsetX == 0 && OffsetY == 0 ? 0x0000_0000 : 0x0000_0003);
+            writer.Write(_x1E);
             writer.Write(Pixels.Length);
 
             stream.Position = 0x0000_0002E;
@@ -300,7 +304,7 @@ namespace Will
 
             stream.Position = 0x0000_00036;
             writer.Write(Encoding.ASCII.GetBytes("TX04"));
-            writer.Write(Stride);
+            writer.Write(stride);
             writer.Write((ushort)Height);
             writer.Write(pixels[0]);
             writer.Write(pixels[1]);

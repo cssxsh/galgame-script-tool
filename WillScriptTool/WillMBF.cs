@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -14,6 +15,8 @@ namespace Will
     {
         public readonly KeyValuePair<string, byte[]>[] Items;
 
+        private readonly uint _x0C;
+
         public WillMBF(byte[] bytes, Encoding encoding)
         {
             using var steam = new MemoryStream(bytes);
@@ -22,8 +25,9 @@ namespace Will
             if (header != "MBF0") throw new FormatException($"unsupported header: {header}");
             var count = reader.ReadInt32();
             var offset = reader.ReadInt32();
-            _ = reader.ReadInt32();
-            _ = reader.ReadUInt32(); // file size or 0
+            _x0C = reader.ReadUInt32();
+            var x10 = reader.ReadUInt32(); // file size or 0
+            if (x10 != bytes.Length) Debug.WriteLine($"MBF0:10 {x10:X8} != {bytes.Length:X8}");
 
             Items = new KeyValuePair<string, byte[]>[count];
             var index = 0x0000_0020;
@@ -83,6 +87,43 @@ namespace Will
                 bc.Merge(image);
                 Items[i] = new KeyValuePair<string, byte[]>(Items[i].Key, bc.ToBytes());
             }
+        }
+
+        public byte[] ToBytes(Encoding encoding)
+        {
+            var size = 0x0000_0020;
+            var index = size;
+            size += Items.Sum(item => 0x03 + encoding.GetByteCount(item.Key));
+            size = (size + 0x04 + 0x0F) & ~0x0F;
+            var offset = size;
+            size += Items.Sum(item => item.Key.Length);
+            var result = new byte[size];
+            
+            using var steam = new MemoryStream(result);
+            using var writer = new BinaryWriter(steam, encoding);
+            
+            writer.Write(encoding.GetBytes("MBF0"));
+            writer.Write(Items.Length);
+            writer.Write(offset);
+            writer.Write(_x0C);
+            writer.Write(result.Length);
+            
+            var data = offset;
+            foreach (var item in Items)
+            {
+                steam.Position = index;
+                var name = encoding.GetBytes(item.Key);
+                var next = (ushort)(0x03 + name.Length);
+                writer.Write(next);
+                writer.Write(name);
+                index += next;
+                
+                steam.Position = data;
+                writer.Write(item.Value);
+                data += item.Value.Length;
+            }
+
+            return result;
         }
     }
 }
