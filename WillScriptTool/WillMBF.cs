@@ -51,7 +51,7 @@ namespace Will
             }
         }
 
-        public MagickImageCollection ToImages(int width, int height)
+        public MagickImageCollection ToImages(uint width, uint height)
         {
             var collection = new MagickImageCollection();
             collection.Add(new MagickImage(new MagickColor("#66CCFF"), width, height));

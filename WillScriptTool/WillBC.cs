@@ -16,9 +16,9 @@ namespace Will
 
         public readonly short OffsetY;
 
-        public readonly int Width;
+        public readonly uint Width;
 
-        public readonly int Height;
+        public readonly uint Height;
 
         public readonly ushort BitsPerPixel;
 
@@ -47,9 +47,9 @@ namespace Will
             var x0E = reader.ReadUInt32();
             Debug.WriteLine($"BC:0E {x0E:X8}");
             // 0x12
-            Width = reader.ReadInt32();
+            Width = reader.ReadUInt32();
             // 0x16
-            Height = reader.ReadInt32();
+            Height = reader.ReadUInt32();
             // 0x1A always 0x0001
             var x1A = reader.ReadUInt16();
             Debug.WriteLine($"BC:1A {x1A:X4}");
