@@ -23,7 +23,7 @@ namespace Ikura
         public readonly int[] Labels;
 
         public readonly KeyValuePair<Instruction, byte[]>[] Commands;
-        
+
         public readonly byte[] Secret;
 
         public IkuraScript(string name, byte[] bytes)
@@ -53,7 +53,7 @@ namespace Ikura
                 }
 
                 if (Secret == null) throw new NotSupportedException("no secret match");
-                
+
                 Array.Resize(ref bytes, bytes.Length - 0x10);
                 IkuraSecret.Handle(bytes, Secret);
             }
@@ -675,11 +675,11 @@ namespace Ikura
             0x83, 0x77, 0x83, 0x7a, 0x83, 0x7d, 0x83, 0x7e,
             0x83, 0x80, 0x83, 0x81, 0x83, 0x82, 0x83, 0x84
         };
-    
+
         private static IEnumerable<byte[]> GetKnownSecrets()
         {
             if (_secret.Length != 0x00) yield return _secret;
-            
+
             var assembly = typeof(Program).Assembly;
             foreach (var name in assembly.GetManifestResourceNames())
             {
@@ -707,7 +707,7 @@ namespace Ikura
                 }
             }
         }
-        
+
         private static volatile byte[] _secret = Array.Empty<byte>();
     }
 }

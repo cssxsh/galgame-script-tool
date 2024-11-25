@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using ATool;
+using ImageMagick;
 
 namespace Will
 {
@@ -23,13 +24,26 @@ namespace Will
                         case "-e":
                         case "-i":
                             mode = args[0];
-                            var archives = Directory.GetFiles(".", path);
-                            if (archives.Length == 0) throw new FileNotFoundException(path);
-                            foreach (var file in archives)
+                            var packages = Directory.GetFiles(".", path);
+                            if (packages.Length == 0) throw new FileNotFoundException(path);
+                            foreach (var file in packages)
                             {
-                                if (file.Contains("gb2312")) continue;
+                                if (file.Contains("_")) continue;
                                 Main(mode, file);
                             }
+
+                            return;
+                        case "-t":
+                        case "-m":
+                            mode = args[0];
+                            var archives = Directory.GetFiles(".", "*.arc");
+                            if (archives.Length == 0) throw new FileNotFoundException("*.arc");
+                            foreach (var file in archives)
+                            {
+                                if (file.Contains("_")) continue;
+                                Main(mode, file);
+                            }
+
                             return;
                         default:
                             if (File.Exists(args[0]))
@@ -135,11 +149,61 @@ namespace Will
                     }
 
                     break;
+                case "-t":
+                    _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
+                {
+                    var bytes = File.ReadAllBytes(path);
+                    var header = _encoding.GetString(bytes, 0x00, 0x04);
+                    if (header != "ARCG") return;
+
+                    Console.WriteLine($"Decode {Path.GetFullPath(path)}");
+                    var arc = new WillARCG(bytes, _encoding);
+
+                    foreach (var file in arc.Files)
+                    {
+                        if (!file.Key.EndsWith(".mbf")) continue;
+                        var psd = $"{Path.GetFileName(path)}~/{file.Key}.psd";
+                        Console.WriteLine($"{file.Key}: {file.Value.Length} bytes");
+                        var mbf = new WillMBF(file.Value, _encoding);
+                        Directory.CreateDirectory(Path.GetDirectoryName(psd) ?? ".");
+                        var collection = mbf.ToImages();
+                        collection.Write(psd);
+                    }
+                }
+                    break;
+                case "-m":
+                    _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
+                {
+                    var bytes = File.ReadAllBytes(path);
+                    var header = _encoding.GetString(bytes, 0x00, 0x04);
+                    if (header != "ARCG") return;
+
+                    Console.WriteLine($"Decode {Path.GetFullPath(path)}");
+                    var arc = new WillARCG(bytes, _encoding);
+
+                    foreach (var file in arc.Files)
+                    {
+                        if (!file.Key.EndsWith(".mbf")) continue;
+                        var psd = $"{Path.GetFileName(path)}~/{file.Key}.psd";
+                        if (!File.Exists(psd)) continue;
+                        Console.WriteLine($"{file.Key}: {file.Value.Length} bytes");
+                        var mbf = new WillMBF(file.Value, _encoding);
+                        var collection = new MagickImageCollection(psd);
+                        mbf.Merge(collection);
+                    }
+
+                    var name =
+                        $"{Path.GetFileNameWithoutExtension(path)}_{_encoding.WebName}{Path.GetExtension(path)}";
+                    File.WriteAllBytes(name, arc.ToBytes(_encoding));
+                }
+                    break;
                 default:
                     Array.Resize(ref scripts, 0);
                     Console.WriteLine("Usage:");
                     Console.WriteLine("  Export text : WillScriptTool -e [*.scb] [encoding]");
                     Console.WriteLine("  Import text : WillScriptTool -i [*.scb] [encoding]");
+                    Console.WriteLine("  Trans image : WillScriptTool -t [*.arc] [encoding]");
+                    Console.WriteLine("  Merge image : WillScriptTool -m [*.arc] [encoding]");
                     Console.WriteLine("Press any key to continue...");
                     Console.ReadKey();
                     return;
@@ -152,6 +216,9 @@ namespace Will
         private static Encoding _jis = Encoding.GetEncoding("SHIFT-JIS");
 
         private const string FileHead = "ARCG";
+
+        // language=regex
+        private const string DicPatten = @"(\[\d{4}[^]]+?\])|(.+?(?=\[\d{4}[^]]+?\]|$))";
 
         private static WillScript[] ReadWillScripts(this BinaryReader reader)
         {
@@ -220,7 +287,7 @@ namespace Will
             for (var i = 0; i < scripts.Length; i++)
             {
                 var bytes = _jis.GetBytes(scripts[i].Name);
-                var len = (bytes.Length + 2 + 3) & 0xFFFF_FFFCu;
+                var len = (bytes.Length + 0x05) & ~0x03u;
                 Array.Resize(ref bytes, (int)(len - 1));
                 writer.Write((byte)len);
                 writer.Write(bytes);
@@ -295,13 +362,13 @@ namespace Will
 
             byte[] AsMessage()
             {
-                var match = Regex.Match(text, @"(\[\d{4}.+?\])|([^[]+|\[\d{4}\])", RegexOptions.Multiline);
+                var match = Regex.Match(text, DicPatten, RegexOptions.Multiline);
                 switch (_encoding.CodePage)
                 {
                     case 932:
                         return _encoding.GetBytes(text);
                     case 936:
-                        if(!text.Contains('[')) return _encoding.GetBytes(text.ReplaceGbkUnsupported());
+                        if (!text.Contains('[')) return _encoding.GetBytes(text.ReplaceGbkUnsupported());
                         var bytes = new byte[_encoding.GetByteCount(text.ReplaceGbkUnsupported())];
                         var index = 0;
                         while (match.Success)
@@ -316,7 +383,7 @@ namespace Will
 
                         return bytes;
                     default:
-                        if(!text.Contains('[')) return _encoding.GetBytes(text);
+                        if (!text.Contains('[')) return _encoding.GetBytes(text);
                         var buffer = new List<byte>();
                         while (match.Success)
                         {

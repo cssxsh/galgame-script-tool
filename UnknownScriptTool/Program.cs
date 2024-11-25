@@ -136,7 +136,7 @@ namespace Unknown
                             if (translated[i] != null) script.Commands[i] = Import(script.Commands[i], translated[i]);
                             offset += script.Commands[i].Length;
                         }
-                        
+
                         foreach (var command in script.Commands)
                         {
                             if (command[0] != 0x0D && command[0] != 0x21) continue;

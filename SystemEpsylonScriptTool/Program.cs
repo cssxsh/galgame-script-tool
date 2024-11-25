@@ -147,12 +147,12 @@ namespace SystemEpsylon
 
         private static SystemEpsylonScript[] ReadSystemEpsylonScripts(this BinaryReader reader)
         {
-            var head = _encoding.GetString(reader.ReadBytes(8));
+            var head = _encoding.GetString(reader.ReadBytes(0x08));
             if (head != FileHead) throw new NotSupportedException($"Not supported version: {head}.");
             var count = reader.ReadInt32();
             var scripts = new SystemEpsylonScript[count];
 
-            for (var i = 0; i < count; i++)
+            for (var i = 0x00; i < count; i++)
             {
                 reader.BaseStream.Position = 0x10 + i * 0x30;
                 var name = _encoding.GetString(reader.ReadBytes(0x20).TrimEnd());
@@ -193,7 +193,7 @@ namespace SystemEpsylon
 
                 writer.BaseStream.Position = offset;
                 writer.Write(bytes);
-                offset += (uint)(bytes.Length + 0x03) & 0xFFFF_FFFCu;
+                offset += (uint)(bytes.Length + 0x03) & ~0x03u;
                 var empty = new byte[offset - writer.BaseStream.Position];
                 writer.Write(empty);
             }
@@ -228,7 +228,7 @@ namespace SystemEpsylon
                     var bytes = _encoding.GetBytes(text);
                     if (bytes.Length + 1 > command[3])
                     {
-                        var size = (byte)((bytes.Length + 4) & 0xFFFF_FFFCu);
+                        var size = (byte)((bytes.Length + 4) & ~0x03u);
                         command[3] = size;
                         Array.Resize(ref command, command[1] + size);
                     }

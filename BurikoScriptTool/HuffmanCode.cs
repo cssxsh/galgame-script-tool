@@ -7,7 +7,7 @@ namespace BGI
         public ushort Code;
         public ushort Depth;
 
-        public int CompareTo (HuffmanCode other)
+        public int CompareTo(HuffmanCode other)
         {
             return Depth == other.Depth
                 ? Code - other.Code

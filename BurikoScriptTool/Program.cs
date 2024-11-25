@@ -28,9 +28,10 @@ namespace BGI
                             if (archives.Length == 0) throw new FileNotFoundException(path);
                             foreach (var file in archives)
                             {
-                                if (file.Contains("gb2312")) continue;
+                                if (file.Contains("_")) continue;
                                 Main(mode, file);
                             }
+
                             return;
                         default:
                             if (File.Exists(args[0]))
@@ -103,7 +104,7 @@ namespace BGI
                     }
 
                     Directory.CreateDirectory(_encoding.WebName);
-                    
+
                     foreach (var file in files)
                     {
                         var patch = new BurikoProgramPatch(file.Key, file.Value);
@@ -137,11 +138,11 @@ namespace BGI
 
                                 stream.Position = item.Key + 1;
                                 stream.Write(BitConverter.GetBytes((ushort)(position - item.Key)), 0, 2);
-                        
+
                                 position += (uint)(item.Value.Length + 1);
                             }
-                            
-                            var limit = (position + 0x0F) & 0xFFFF_FFF0;
+
+                            var limit = (position + 0x0F) & ~0x0Fu;
                             var empty = new byte[limit - position];
                             stream.Position = position;
                             stream.Write(empty, 0, empty.Length);
@@ -150,7 +151,7 @@ namespace BGI
                         {
                             var command = 0x1C + BitConverter.ToUInt32(file.Value, 0x1C);
                             var dictionary = new Dictionary<string, uint>();
-                            
+
                             foreach (var item in patch.Data)
                             {
                                 var hash = BitConverter.ToString(item.Value);
@@ -159,13 +160,13 @@ namespace BGI
                                     stream.Position = position;
                                     stream.Write(item.Value, 0, item.Value.Length);
                                     stream.WriteByte(0x00);
-                                    
+
                                     value = position - command;
                                     dictionary.Add(hash, value);
-                        
+
                                     position += (uint)(item.Value.Length + 1);
                                 }
-       
+
                                 stream.Position = item.Key + 4;
                                 stream.Write(BitConverter.GetBytes(value), 0, 4);
                             }
@@ -248,11 +249,11 @@ namespace BGI
             var key = reader.ReadUInt32();
             var output = new byte[reader.ReadUInt32()];
             var decompress = reader.ReadInt32();
-            
+
             stream.Position = 0x0000_0020;
             var codes = new HuffmanCode[0x0200];
             var nodes = new HuffmanNode[0x03FF];
-            
+
             var index = 0;
             for (var i = 0; i < 0x200; i++)
             {
@@ -340,7 +341,7 @@ namespace BGI
                     if (code >= 0x0100)
                     {
                         var offset = ReadBits(12);
-                        
+
                         var count = (code & 0xFF) + 2;
                         offset += 2;
                         var src = (int)(dst_ptr - offset);
@@ -353,7 +354,7 @@ namespace BGI
                         output[dst_ptr++] = (byte)code;
                     }
                 }
-                
+
                 return;
 
                 uint ReadBits(int bits)
@@ -364,9 +365,10 @@ namespace BGI
                         cache = (cache << 8) | b;
                         cached += 8;
                     }
+
                     var mask = (uint)((1 << bits) - 1);
                     cached -= bits;
-                    
+
                     return (cache >> cached) & mask;
                 }
             }

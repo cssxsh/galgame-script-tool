@@ -93,9 +93,7 @@ namespace Unknown
                     case 0x0201:
                     {
                         var len = reader.ReadUInt16();
-                        // var text = Encoding.GetEncoding(932).GetString(reader.ReadBytes(len));
-                        // Debug.WriteLine(text);
-                        size += len + 0x04;
+                        size += 0x04 + len;
                     }
                         break;
                     case 0x023F:
@@ -104,9 +102,7 @@ namespace Unknown
                     case 0x0241:
                     {
                         var len = reader.ReadUInt16();
-                        // var text = Encoding.GetEncoding(932).GetString(reader.ReadBytes(len));
-                        // Debug.WriteLine(text);
-                        size += len + 0x04;
+                        size += 0x04 + len;
                     }
                         break;
                     case 0x0242:
@@ -184,10 +180,10 @@ namespace Unknown
 
             steam.Position = 0x0000_001C;
             foreach (var command in Commands) writer.Write(command);
-            
+
             var mask = (byte)(0x75 * Key + 0x42);
             for (var i = 0x1C; i < bytes.Length; i++) bytes[i] ^= mask;
-            
+
             return bytes;
         }
     }

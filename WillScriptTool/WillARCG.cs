@@ -76,6 +76,7 @@ namespace Will
                     freq[directory] = 1;
                 }
             }
+
             var offsetOfDirectory = size;
             size += freq.Count * 0x04;
             foreach (var file in Files)
@@ -122,7 +123,7 @@ namespace Will
                     writer.Write(offsetOfFile);
                     writer.Write(file.Value.Length);
                     offsetOfDirectory += capacity + 0x08;
-                    
+
                     steam.Position = offsetOfFile;
                     writer.Write(file.Value);
                     offsetOfFile += file.Value.Length;

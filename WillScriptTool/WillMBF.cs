@@ -51,7 +51,7 @@ namespace Will
             }
         }
 
-        public MagickImageCollection ToImages(uint width, uint height)
+        public MagickImageCollection ToImages(uint width = 800, uint height = 600)
         {
             var collection = new MagickImageCollection();
             collection.Add(new MagickImage(new MagickColor("#66CCFF"), width, height));
@@ -80,6 +80,7 @@ namespace Will
             {
                 dictionary.Add(images[i].Label ?? $"L{i}", images[i] as MagickImage);
             }
+
             for (var i = 0; i < Items.Length; i++)
             {
                 var bc = new WillBC(Items[i].Value);
@@ -98,16 +99,16 @@ namespace Will
             var offset = size;
             size += Items.Sum(item => item.Value.Length);
             var result = new byte[size];
-            
+
             using var steam = new MemoryStream(result);
             using var writer = new BinaryWriter(steam, encoding);
-            
+
             writer.Write(encoding.GetBytes("MBF0"));
             writer.Write(Items.Length);
             writer.Write(offset);
             writer.Write(_x0C);
             writer.Write(result.Length);
-            
+
             var data = offset;
             foreach (var item in Items)
             {
@@ -117,7 +118,7 @@ namespace Will
                 writer.Write(next);
                 writer.Write(name);
                 index += next;
-                
+
                 steam.Position = data;
                 writer.Write(item.Value);
                 data += item.Value.Length;

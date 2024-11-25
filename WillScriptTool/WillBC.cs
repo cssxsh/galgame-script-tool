@@ -182,9 +182,9 @@ namespace Will
                 0x0018 => "BGR",
                 _ => throw new FormatException($"unsupported bbp: {BitsPerPixel:X4}"),
             };
-            var pixels = image.GetPixels().ToByteArray(format) 
+            var pixels = image.GetPixels().ToByteArray(format)
                          ?? throw new FormatException($"get pixels<{format}> fail!");
-            if (pixels.Length != Pixels.Length) 
+            if (pixels.Length != Pixels.Length)
                 throw new FormatException($"unsupported pixels length: {pixels.Length}");
             Array.Copy(pixels, 0, Pixels, 0, pixels.Length);
         }

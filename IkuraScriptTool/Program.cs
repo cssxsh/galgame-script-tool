@@ -225,14 +225,14 @@ namespace Ikura
                 case IkuraScript.Instruction.PM:
                 case IkuraScript.Instruction.PMP:
                     return IkuraScript.Decode(args, 1)
-                        .Select(line => _encoding.GetString(line).Replace("・", "﹡"))
+                        .Select(line => _encoding.GetString(line))
                         .ToArray();
                 case IkuraScript.Instruction.MSGBOX:
                     return new[] { _encoding.GetString(args, 4, args.Length - 6) };
                 case IkuraScript.Instruction.MPM:
                     if (args[1] == 0) return Array.Empty<string>();
                     return IkuraScript.Decode(args, 2)
-                        .Select(line => _encoding.GetString(line).Replace("・", "﹡"))
+                        .Select(line => _encoding.GetString(line))
                         .ToArray();
                 case IkuraScript.Instruction.SETGAMEINFO:
                     return new[] { _encoding.GetString(args, 0, args.Length - 1) };
@@ -243,6 +243,14 @@ namespace Ikura
 
         private static byte[] Import(IkuraScript.Instruction instruction, byte[] args, string[] lines)
         {
+            if (_encoding.CodePage == 936)
+            {
+                for (var i = 0; i < lines.Length; i++)
+                {
+                    lines[i] = lines[i].ReplaceGbkUnsupported();
+                }
+            }
+
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
             switch (instruction)
             {

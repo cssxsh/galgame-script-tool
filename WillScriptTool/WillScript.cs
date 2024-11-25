@@ -18,26 +18,23 @@ namespace Will
             var commands = new List<byte[]>();
             // ReSharper disable once RedundantAssignment
             var temp = Array.Empty<byte>();
-            using (var steam = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(steam))
+            using var steam = new MemoryStream(bytes);
+            using var reader = new BinaryReader(steam);
+            while (steam.Position < bytes.Length)
             {
-                while (steam.Position < bytes.Length)
+                var position = steam.Position;
+                var size = reader.ReadByte();
+                if (size == 0x00 || size == 0xFF)
                 {
-                    var position = steam.Position;
-                    var size = reader.ReadByte();
-                    if (size == 0x00 || size == 0xFF)
-                    {
-                        steam.Position = position;
-                        temp = reader.ReadBytes((int)(bytes.Length - position));
-                        if (temp.Any(b => b != 0x00) && temp.Any(b => b != 0xFF))
-                            throw new FormatException($"{name} at 0x{position:X8}");
-                        commands.Add(temp);
-                        break;
-                    }
-
                     steam.Position = position;
-                    commands.Add(reader.ReadBytes(size));
+                    temp = reader.ReadBytes((int)(bytes.Length - position));
+                    if (temp.Any(b => b != size)) throw new FormatException($"{name} at 0x{position:X8}");
+                    commands.Add(temp);
+                    break;
                 }
+
+                steam.Position = position;
+                commands.Add(reader.ReadBytes(size));
             }
 
             Commands = commands.ToArray();

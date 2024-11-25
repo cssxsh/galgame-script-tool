@@ -38,96 +38,91 @@ namespace SystemEpsylon
             }
 
             var commands = new List<byte[]>();
-            using (var steam = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(steam))
+            using var steam = new MemoryStream(bytes);
+            using var reader = new BinaryReader(steam);
+            while (steam.Position < bytes.Length)
             {
-                while (steam.Position < bytes.Length)
+                var position = steam.Position;
+                var instruction = reader.ReadByte();
+                var size = reader.ReadByte();
+
+                switch (instruction)
                 {
-                    var position = steam.Position;
-                    var instruction = reader.ReadByte();
-                    var size = reader.ReadByte();
-
-                    switch (instruction)
+                    case 0x00:
+                    case 0x02:
+                    case 0x0D:
+                    case 0x18:
                     {
-                        case 0x00:
-                        case 0x02:
-                        case 0x0D:
-                        case 0x18:
-                        {
-                            _ = reader.ReadByte();
-                            var len = reader.ReadByte();
-                            size += len;
+                        _ = reader.ReadByte();
+                        var len = reader.ReadByte();
+                        size += len;
 
-                            // _ = reader.ReadBytes(len);
-                        }
-                            break;
-                        case 0x1E:
-                        case 0x1F:
-                        case 0x20:
-                        {
-                            _ = reader.ReadByte();
-                            _ = reader.ReadByte();
-                            _ = reader.ReadByte();
-                            _ = reader.ReadByte();
-                            _ = reader.ReadByte();
-                            var len = reader.ReadByte();
-                            size += len;
-
-                            // _ = reader.ReadBytes(len);
-                        }
-                            break;
-                        case 0x26:
-                        {
-                            _ = reader.ReadByte();
-                            var len = reader.ReadByte();
-                            size += len;
-
-                            // _ = reader.ReadBytes(len);
-                        }
-                            break;
-                        case 0x36:
-                        {
-                            _ = reader.ReadByte();
-                            var len = reader.ReadByte();
-                            size += len;
-
-                            // _ = reader.ReadByte();
-                            // _ = reader.ReadByte();
-                            // _ = reader.ReadByte();
-                            // _ = reader.ReadByte();
-
-                            // _ = reader.ReadBytes(len);
-                        }
-                            break;
-                        case 0x3A:
-                        {
-                            var len = reader.ReadByte();
-                            size += len;
-                            // _ = reader.ReadByte();
-
-                            // _ = reader.ReadByte();
-                            // _ = reader.ReadByte();
-                            // _ = reader.ReadByte();
-                            // _ = reader.ReadByte();
-
-                            // _ = reader.ReadByte();
-                            // _ = reader.ReadByte();
-                            // _ = reader.ReadByte();
-                            // _ = reader.ReadByte();
-
-                            // _ = reader.ReadBytes(len);
-                        }
-                            break;
+                        // _ = reader.ReadBytes(len);
                     }
-
-                    if (size == 0x00)
+                        break;
+                    case 0x1E:
+                    case 0x1F:
+                    case 0x20:
                     {
-                        throw new FormatException($"{instruction:X2}");
-                    }
+                        _ = reader.ReadByte();
+                        _ = reader.ReadByte();
+                        _ = reader.ReadByte();
+                        _ = reader.ReadByte();
+                        _ = reader.ReadByte();
+                        var len = reader.ReadByte();
+                        size += len;
 
-                    steam.Position = position;
-                    commands.Add(reader.ReadBytes(size));
+                        // _ = reader.ReadBytes(len);
+                    }
+                        break;
+                    case 0x26:
+                    {
+                        _ = reader.ReadByte();
+                        var len = reader.ReadByte();
+                        size += len;
+
+                        // _ = reader.ReadBytes(len);
+                    }
+                        break;
+                    case 0x36:
+                    {
+                        _ = reader.ReadByte();
+                        var len = reader.ReadByte();
+                        size += len;
+
+                        // _ = reader.ReadByte();
+                        // _ = reader.ReadByte();
+                        // _ = reader.ReadByte();
+                        // _ = reader.ReadByte();
+
+                        // _ = reader.ReadBytes(len);
+                    }
+                        break;
+                    case 0x3A:
+                    {
+                        var len = reader.ReadByte();
+                        size += len;
+                        // _ = reader.ReadByte();
+
+                        // _ = reader.ReadByte();
+                        // _ = reader.ReadByte();
+                        // _ = reader.ReadByte();
+                        // _ = reader.ReadByte();
+
+                        // _ = reader.ReadByte();
+                        // _ = reader.ReadByte();
+                        // _ = reader.ReadByte();
+                        // _ = reader.ReadByte();
+
+                        // _ = reader.ReadBytes(len);
+                    }
+                        break;
                 }
+
+                if (size == 0x00) throw new FormatException($"{instruction:X2}");
+
+                steam.Position = position;
+                commands.Add(reader.ReadBytes(size));
             }
 
             Commands = commands.ToArray();

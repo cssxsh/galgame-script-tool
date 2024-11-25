@@ -31,7 +31,7 @@ namespace BGI
             if (Header == 0x6972_7542u) // 'BurikoCompiledScript'
             {
                 var cp932 = Encoding.GetEncoding(932);
-                
+
                 stream.Position = 0x0000_0000;
                 var header = Encoding.ASCII.GetString(reader.ReadBytes(0x1C).TrimEnd());
                 switch (header)
@@ -41,7 +41,7 @@ namespace BGI
                     default:
                         throw new FormatException($"unsupported: {header}");
                 }
-                
+
                 var command = 0x0000_001C + reader.ReadUInt32();
                 var size = (uint)source.Length;
                 var position = command;
@@ -58,7 +58,7 @@ namespace BGI
                         case 0x0000_0008:
                         {
                             var value = reader.ReadUInt32();
-                            
+
                             Debug.WriteLine($"{position:X8}>{instruction:X2} PUSH {value:X8}");
                         }
                             position += 0x08;
@@ -67,13 +67,13 @@ namespace BGI
                         case 0x0000_0003:
                         {
                             var diff = reader.ReadUInt32();
-                            
+
                             stream.Position = command + diff;
                             if (size > stream.Position) size = (uint)stream.Position;
                             var count = (int)(source.Length - position > 0x80 ? 0x80 : source.Length - position);
                             var bytes = reader.ReadBytes(count).TrimEnd();
                             data.Add(new KeyValuePair<uint, byte[]>(position, bytes));
-                            
+
                             Debug.WriteLine($"{position:X8}>{instruction:X2} PUSH {diff:X8}");
                             Debug.WriteLine($"'{cp932.GetString(bytes)}'");
                         }
@@ -84,7 +84,7 @@ namespace BGI
                         case 0x0000_003F:
                         {
                             var value = reader.ReadUInt32();
-                            
+
                             Debug.WriteLine($"{position:X8}>{instruction:X2} ???? {value:X8}");
                         }
                             position += 0x08;
