@@ -257,27 +257,13 @@ namespace Unknown
                     var count = BitConverter.ToUInt32(command, 0x06) - 0x01;
                     var arr = new string[count];
                     var position = 0x0A;
-                    while (true)
-                    {
-                        switch (BitConverter.ToUInt16(command, position))
-                        {
-                            case 0x15:
-                            case 0x16:
-                            case 0x17:
-                            case 0x18:
-                            case 0x19:
-                                position += 0x06;
-                                continue;
-                        }
-
-                        break;
-                    }
+                    while (BitConverter.ToUInt16(command, position) != 0x0201) position += 0x06;
 
                     for (var i = 0; i < count; i++)
                     {
                         var len = BitConverter.ToUInt16(command, position + 0x02) - 0x01;
                         while (command[position + 0x04 + len] != 0x00) len--;
-                        arr[i] = _encoding.GetString(command, 0x04, len);
+                        arr[i] = _encoding.GetString(command, position + 0x04, len);
                         position += BitConverter.ToUInt16(command, position + 0x02) + 0x04;
                     }
 
@@ -319,21 +305,7 @@ namespace Unknown
                     var count = BitConverter.ToUInt32(command, 0x06) - 0x01;
                     if (count != lines.Length) throw new FormatException("Invalid number of lines");
                     var position = 0x0A;
-                    while (true)
-                    {
-                        switch (BitConverter.ToUInt16(command, position))
-                        {
-                            case 0x15:
-                            case 0x16:
-                            case 0x17:
-                            case 0x18:
-                            case 0x19:
-                                position += 0x06;
-                                continue;
-                        }
-
-                        break;
-                    }
+                    while (BitConverter.ToUInt16(command, position) != 0x0201) position += 0x06;
 
                     var buffer = new byte[position + lines.Sum(line => (_encoding.GetByteCount(line) + 0x08) & ~0x03)];
 
