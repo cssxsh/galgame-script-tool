@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WillScriptTool", "WillScrip
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BurikoScriptTool", "BurikoScriptTool\BurikoScriptTool.csproj", "{8F60B2FF-4CC0-40B0-807F-16BCFE10DC5B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnknownScriptTool", "UnknownScriptTool\UnknownScriptTool.csproj", "{AB6EAFA7-50FC-4D37-9902-0C4EB2C0F2C0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,5 +44,9 @@ Global
 		{8F60B2FF-4CC0-40B0-807F-16BCFE10DC5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8F60B2FF-4CC0-40B0-807F-16BCFE10DC5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8F60B2FF-4CC0-40B0-807F-16BCFE10DC5B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB6EAFA7-50FC-4D37-9902-0C4EB2C0F2C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB6EAFA7-50FC-4D37-9902-0C4EB2C0F2C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB6EAFA7-50FC-4D37-9902-0C4EB2C0F2C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB6EAFA7-50FC-4D37-9902-0C4EB2C0F2C0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
