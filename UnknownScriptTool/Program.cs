@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -117,10 +118,31 @@ namespace Unknown
                             translated[index] = lines;
                         }
 
+                        // ReSharper disable once InconsistentNaming
+                        var _O2I = new Dictionary<int, int>();
+                        var offset = 0;
                         for (var i = 0; i < script.Commands.Length; i++)
                         {
-                            if (translated[i] == null) continue;
-                            script.Commands[i] = Import(script.Commands[i], translated[i]);
+                            _O2I.Add(offset, i);
+                            offset += script.Commands[i].Length;
+                        }
+
+                        // ReSharper disable once InconsistentNaming
+                        var _I2O = new Dictionary<int, int>();
+                        offset = 0;
+                        for (var i = 0; i < script.Commands.Length; i++)
+                        {
+                            _I2O.Add(i, offset);
+                            if (translated[i] != null) script.Commands[i] = Import(script.Commands[i], translated[i]);
+                            offset += script.Commands[i].Length;
+                        }
+                        
+                        foreach (var command in script.Commands)
+                        {
+                            if (command[0] != 0x0D && command[0] != 0x21) continue;
+                            var o = BitConverter.ToInt32(command, 0x02);
+                            o = _I2O[_O2I[o]];
+                            BitConverter.GetBytes(o).CopyTo(command, 0x02);
                         }
                     }
 
