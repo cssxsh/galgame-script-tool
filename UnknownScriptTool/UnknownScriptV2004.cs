@@ -8,7 +8,7 @@ using System.Text;
 namespace Unknown
 {
     [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
-    public readonly struct UnknownScript
+    public readonly struct UnknownScriptV2004
     {
         public readonly string Name;
 
@@ -18,7 +18,7 @@ namespace Unknown
 
         public readonly byte[][] Commands;
 
-        public UnknownScript(string name, uint sort, byte[] bytes)
+        public UnknownScriptV2004(string name, uint sort, byte[] bytes)
         {
             Name = name;
             Sort = sort;
@@ -42,7 +42,7 @@ namespace Unknown
             {
                 var position = steam.Position;
                 var instruction = reader.ReadUInt16();
-                var size = 0x00;
+                var size = 0x02;
 
                 switch (instruction)
                 {
@@ -52,10 +52,9 @@ namespace Unknown
                     case 0x0004:
                     case 0x0005:
                     case 0x000C:
-                        size += 0x02;
                         break;
                     case 0x000D:
-                        size += 0x06;
+                        size += 0x04;
                         break;
                     case 0x000E:
                     case 0x000F:
@@ -63,7 +62,6 @@ namespace Unknown
                     case 0x0011:
                     case 0x0012:
                     case 0x0013:
-                        size += 0x02;
                         break;
                     case 0x0015:
                     case 0x0016:
@@ -74,36 +72,30 @@ namespace Unknown
                     case 0x001B:
                     case 0x001C:
                     case 0x001D:
-                        size += 0x06;
+                        size += 0x04;
                         break;
                     case 0x001E:
                     case 0x001F:
-                        size += 0x02;
                         break;
                     case 0x0021:
-                        size += 0x06;
+                        size += 0x04;
                         break;
                     case 0x0026:
-                        size += 0x0A;
+                        size += 0x04;
+                        size += 0x04;
                         break;
                     case 0x01F4:
-                        size += 0x04;
+                        size += 0x02;
                         break;
                     case 0x0200:
                     case 0x0201:
-                    {
-                        var len = reader.ReadUInt16();
-                        size += 0x04 + len;
-                    }
+                        size += 0x02 + reader.ReadUInt16();
                         break;
                     case 0x023F:
-                        size += 0x06;
+                        size += 0x04;
                         break;
                     case 0x0241:
-                    {
-                        var len = reader.ReadUInt16();
-                        size += 0x04 + len;
-                    }
+                        size += 0x02 + reader.ReadUInt16();
                         break;
                     case 0x0242:
                     case 0x024B:
@@ -122,42 +114,49 @@ namespace Unknown
                     case 0x0262:
                     case 0x0263:
                     case 0x0265:
-                        size += 0x08;
+                        size += 0x02;
+                        size += 0x01;
+                        size += 0x01;
+                        size += 0x01;
+                        size += 0x01;
                         break;
                     case 0x0268:
                     case 0x0269:
                     case 0x026A:
-                        size += 0x04;
+                        size += 0x02;
                         break;
                     case 0x026D:
                     case 0x026E:
-                        size += 0x06;
+                        size += 0x04;
                         break;
                     case 0x0270:
                     case 0x0271:
-                        size += 0x08;
+                        size += 0x02;
+                        size += 0x01;
+                        size += 0x01;
+                        size += 0x01;
+                        size += 0x01;
                         break;
                     case 0x0272:
                     case 0x0273:
                     case 0x0274:
                     case 0x0275:
-                        size += 0x04;
+                        size += 0x02;
                         break;
                     case 0x0276:
-                        size += 0x06;
+                        size += 0x04;
                         break;
                     case 0x0277:
                     case 0x0279:
-                        size += 0x04;
-                        break;
-                    case 0x027A:
-                        size += (int)(reader.ReadUInt32() + 0x1C - position);
-                        break;
-                    case 0x027B:
                         size += 0x02;
                         break;
+                    case 0x027A:
+                        size += (int)(reader.ReadUInt32() + 0x1A - position);
+                        break;
+                    case 0x027B:
+                        break;
                     default:
-                        throw new FormatException($"unknown instruction at {Name}:{position:X08} : {instruction:X04}");
+                        throw new FormatException($"unknown instruction at {Name}:{position:X8} : {instruction:X4}");
                 }
 
                 steam.Position = position;
