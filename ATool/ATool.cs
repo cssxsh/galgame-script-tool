@@ -17,6 +17,14 @@ namespace ATool
             return target;
         }
 
+        public static void Rot(this byte[] source)
+        {
+            for (var i = 0; i < source.Length; i++)
+            {
+                source[i] = (byte)((source[i] >> 0x04) | (source[i] << 0x04));
+            }
+        }
+
         public static string ReplaceGbkUnsupported(this string source, bool force = true)
         {
             var chars = source.ToCharArray();
