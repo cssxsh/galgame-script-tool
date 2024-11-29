@@ -14,8 +14,8 @@ namespace Will
 
         public WillARCG(byte[] bytes, Encoding encoding)
         {
-            using var steam = new MemoryStream(bytes);
-            using var reader = new BinaryReader(steam, encoding);
+            using var stream = new MemoryStream(bytes);
+            using var reader = new BinaryReader(stream, encoding);
             var header = encoding.GetString(reader.ReadBytes(0x04));
             if (header != "ARCG") throw new FormatException($"unsupported header: {header}");
             var version = reader.ReadUInt32();
@@ -29,7 +29,7 @@ namespace Will
 
             for (var j = 0; j < countOfDirectory; j++)
             {
-                steam.Position = offsetOfIndex;
+                stream.Position = offsetOfIndex;
                 var size = reader.ReadByte();
                 var directory = encoding.GetString(reader.ReadBytes(size - 0x01).TrimEnd());
                 var offsetOfDirectory = reader.ReadUInt32();
@@ -38,14 +38,14 @@ namespace Will
 
                 for (var i = 0; i < countOfFile; i++)
                 {
-                    steam.Position = offsetOfDirectory;
+                    stream.Position = offsetOfDirectory;
                     size = reader.ReadByte();
                     var file = encoding.GetString(reader.ReadBytes(size - 0x01).TrimEnd());
                     var offsetOfFile = reader.ReadUInt32();
                     var sizeOfFile = reader.ReadInt32();
                     offsetOfDirectory += size + 0x08u;
 
-                    steam.Position = offsetOfFile;
+                    stream.Position = offsetOfFile;
                     var content = reader.ReadBytes(sizeOfFile);
                     files.Add(new KeyValuePair<string, byte[]>(Path.Combine(directory, file), content));
                 }
@@ -88,8 +88,8 @@ namespace Will
 
             var result = new byte[size];
 
-            using var steam = new MemoryStream(result);
-            using var writer = new BinaryWriter(steam, encoding);
+            using var stream = new MemoryStream(result);
+            using var writer = new BinaryWriter(stream, encoding);
 
             writer.Write(encoding.GetBytes("ARCG"));
             writer.Write(0x0001_0000u);
@@ -101,12 +101,12 @@ namespace Will
             var index = 0;
             foreach (var item in freq)
             {
-                steam.Position = offsetOfIndex;
+                stream.Position = offsetOfIndex;
                 var directory = encoding.GetBytes(item.Key);
                 var capacity = (directory.Length + 0x05) & ~0x03;
                 writer.Write((byte)capacity);
                 writer.Write(directory);
-                steam.Position = offsetOfIndex + capacity;
+                stream.Position = offsetOfIndex + capacity;
                 writer.Write(offsetOfDirectory);
                 writer.Write(item.Value);
                 offsetOfIndex += capacity + 0x08;
@@ -114,17 +114,17 @@ namespace Will
                 for (var i = 0; i < item.Value; i++)
                 {
                     var file = Files[index++];
-                    steam.Position = offsetOfDirectory;
+                    stream.Position = offsetOfDirectory;
                     var filename = encoding.GetBytes(Path.GetFileName(file.Key) ?? "");
                     capacity = (filename.Length + 0x05) & ~0x03;
                     writer.Write((byte)capacity);
                     writer.Write(filename);
-                    steam.Position = offsetOfDirectory + capacity;
+                    stream.Position = offsetOfDirectory + capacity;
                     writer.Write(offsetOfFile);
                     writer.Write(file.Value.Length);
                     offsetOfDirectory += capacity + 0x08;
 
-                    steam.Position = offsetOfFile;
+                    stream.Position = offsetOfFile;
                     writer.Write(file.Value);
                     offsetOfFile += file.Value.Length;
                 }

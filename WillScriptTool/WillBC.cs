@@ -30,8 +30,8 @@ namespace Will
 
         public WillBC(byte[] bytes)
         {
-            using var steam = new MemoryStream(bytes);
-            using var reader = new BinaryReader(steam);
+            using var stream = new MemoryStream(bytes);
+            using var reader = new BinaryReader(stream);
             // 0x00
             var header = Encoding.ASCII.GetString(reader.ReadBytes(0x02));
             if (header != "BC") throw new FormatException($"unsupported header: {header}");
@@ -67,11 +67,11 @@ namespace Will
             var sizeOfPixels = reader.ReadUInt32();
             Pixels = new byte[sizeOfPixels];
 
-            steam.Position = 0x0000_0002E;
+            stream.Position = 0x0000_0002E;
             Colors = reader.ReadInt32();
             if (Colors < 0) throw new FormatException($"unsupported colors: {Colors:X8}");
 
-            steam.Position = data;
+            stream.Position = data;
             var format = Encoding.ASCII.GetString(reader.ReadBytes(0x04));
             if (format != "TX04") throw new FormatException($"unsupported format: {format}");
             var stride = reader.ReadUInt16(); // eq Width * BBP / 8
@@ -81,14 +81,14 @@ namespace Will
 
             // Decompress form https://github.com/morkt/GARbro
             var dst = 0x0000_0000;
-            dst += steam.Read(Pixels, dst, 0x02);
-            while (dst < Pixels.Length && steam.Position < sizeOfBytes)
+            dst += stream.Read(Pixels, dst, 0x02);
+            while (dst < Pixels.Length && stream.Position < sizeOfBytes)
             {
                 var count = (int)reader.ReadByte();
                 if (0xE0 == (count & 0xE0))
                 {
                     count = Math.Min((count & 0x1F) + 0x01, Pixels.Length - dst);
-                    dst += steam.Read(Pixels, dst, count);
+                    dst += stream.Read(Pixels, dst, count);
                     continue;
                 }
 

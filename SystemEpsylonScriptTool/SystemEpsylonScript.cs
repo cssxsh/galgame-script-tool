@@ -38,11 +38,11 @@ namespace SystemEpsylon
             }
 
             var commands = new List<byte[]>();
-            using var steam = new MemoryStream(bytes);
-            using var reader = new BinaryReader(steam);
-            while (steam.Position < bytes.Length)
+            using var stream = new MemoryStream(bytes);
+            using var reader = new BinaryReader(stream);
+            while (stream.Position < bytes.Length)
             {
-                var position = steam.Position;
+                var position = stream.Position;
                 var instruction = reader.ReadByte();
                 var size = reader.ReadByte();
 
@@ -121,7 +121,7 @@ namespace SystemEpsylon
 
                 if (size == 0x00) throw new FormatException($"{instruction:X2}");
 
-                steam.Position = position;
+                stream.Position = position;
                 commands.Add(reader.ReadBytes(size));
             }
 

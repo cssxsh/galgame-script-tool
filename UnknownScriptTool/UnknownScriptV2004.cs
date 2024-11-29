@@ -24,8 +24,8 @@ namespace Unknown
             Sort = sort;
 
             var commands = new List<byte[]>();
-            using var steam = new MemoryStream(bytes);
-            using var reader = new BinaryReader(steam);
+            using var stream = new MemoryStream(bytes);
+            using var reader = new BinaryReader(stream);
             var header = reader.ReadUInt32();
             if (header != 0x2054_5543) throw new FormatException($"header: {header:X8}");
             var x04 = reader.ReadUInt32();
@@ -37,10 +37,10 @@ namespace Unknown
             var mask = (byte)(0x75 * Key + 0x42);
             for (var i = 0x1C; i < bytes.Length; i++) bytes[i] ^= mask;
 
-            steam.Position = 0x0000_001C;
-            while (steam.Position < bytes.Length)
+            stream.Position = 0x0000_001C;
+            while (stream.Position < bytes.Length)
             {
-                var position = steam.Position;
+                var position = stream.Position;
                 var instruction = reader.ReadUInt16();
                 var size = 0x02;
 
@@ -159,7 +159,7 @@ namespace Unknown
                         throw new FormatException($"unknown instruction at {Name}:{position:X8} : {instruction:X4}");
                 }
 
-                steam.Position = position;
+                stream.Position = position;
                 commands.Add(reader.ReadBytes(size));
             }
 
@@ -169,15 +169,15 @@ namespace Unknown
         public byte[] ToBytes()
         {
             var bytes = new byte[0x0000_001C + Commands.Sum(command => command.Length)];
-            using var steam = new MemoryStream(bytes);
-            using var writer = new BinaryWriter(steam);
+            using var stream = new MemoryStream(bytes);
+            using var writer = new BinaryWriter(stream);
 
             writer.Write(Encoding.ASCII.GetBytes("CUT "));
             writer.Write((uint)(bytes.Length - 0x1C));
             writer.Write(Key);
             writer.Write(0x0001_0000);
 
-            steam.Position = 0x0000_001C;
+            stream.Position = 0x0000_001C;
             foreach (var command in Commands) writer.Write(command);
 
             var mask = (byte)(0x75 * Key + 0x42);

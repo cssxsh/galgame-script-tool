@@ -694,15 +694,15 @@ namespace Ikura
             var path = Environment.GetEnvironmentVariable("ISF_PATH") ?? ".";
             foreach (var exe in Directory.GetFiles(path, "*.exe"))
             {
-                using var steam = File.OpenRead(exe);
-                using var reader = new BinaryReader(steam);
-                while (steam.Position < steam.Length)
+                using var stream = File.OpenRead(exe);
+                using var reader = new BinaryReader(stream);
+                while (stream.Position < stream.Length)
                 {
                     if (reader.ReadUInt32() != 0x3042_4F55) continue;
-                    steam.Position -= 0x04;
+                    stream.Position -= 0x04;
                     var bytes = reader.ReadBytes(0x0800);
                     if (bytes.Any(b => b < 0x30 || b > 0x5A)) continue;
-                    Console.WriteLine($"try use secret from {exe}:{steam.Position - 0x0800:X8}");
+                    Console.WriteLine($"try use secret from {exe}:{stream.Position - 0x0800:X8}");
                     yield return bytes;
                 }
             }

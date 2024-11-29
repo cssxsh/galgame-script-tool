@@ -488,8 +488,8 @@ namespace Unknown
                     var bytes = _encoding.GetBytes(string.Join("\n", lines));
                     var len = (bytes.Length + 0x03) & ~0x03;
                     var buffer = new byte[0x08 + len];
-                    using var steam = new MemoryStream(buffer);
-                    using var writer = new BinaryWriter(steam);
+                    using var stream = new MemoryStream(buffer);
+                    using var writer = new BinaryWriter(stream);
 
                     writer.Write(command, 0x00, 0x04);
                     writer.Write(len);
@@ -520,8 +520,8 @@ namespace Unknown
                     var bytes = _encoding.GetBytes(string.Join("\n", lines));
                     var len = (bytes.Length + 0x04) & ~0x03;
                     var buffer = new byte[0x04 + len];
-                    using var steam = new MemoryStream(buffer);
-                    using var writer = new BinaryWriter(steam);
+                    using var stream = new MemoryStream(buffer);
+                    using var writer = new BinaryWriter(stream);
 
                     writer.Write(command, 0x00, 0x02);
                     writer.Write((ushort)len);
@@ -538,15 +538,15 @@ namespace Unknown
 
                     var buffer = new byte[position + lines.Sum(line => (_encoding.GetByteCount(line) + 0x08) & ~0x03)];
 
-                    using var steam = new MemoryStream(buffer);
-                    using var writer = new BinaryWriter(steam);
+                    using var stream = new MemoryStream(buffer);
+                    using var writer = new BinaryWriter(stream);
 
                     writer.Write(command, 0x00, position);
-                    steam.Position = 0x0000_0002;
+                    stream.Position = 0x0000_0002;
                     writer.Write(buffer.Length);
                     foreach (var line in lines)
                     {
-                        steam.Position = position;
+                        stream.Position = position;
                         var bytes = _encoding.GetBytes(line);
                         var len = (bytes.Length + 0x04) & ~0x03;
                         writer.Write((ushort)0x0201);

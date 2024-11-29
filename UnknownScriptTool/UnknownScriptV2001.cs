@@ -24,8 +24,8 @@ namespace Unknown
             Sort = sort;
 
             var commands = new List<byte[]>();
-            using var steam = new MemoryStream(bytes);
-            using var reader = new BinaryReader(steam);
+            using var stream = new MemoryStream(bytes);
+            using var reader = new BinaryReader(stream);
             var header = Encoding.ASCII.GetString(reader.ReadBytes(0x10).TrimEnd());
             if (header != "MINET") throw new FormatException($"header: {header}");
             X10 = reader.ReadUInt32();
@@ -33,10 +33,10 @@ namespace Unknown
             if (x14 != bytes.Length - 0x20) throw new FormatException($"size: {x14}");
             X18 = reader.ReadUInt32();
 
-            steam.Position = 0x0000_0020;
-            while (steam.Position < bytes.Length)
+            stream.Position = 0x0000_0020;
+            while (stream.Position < bytes.Length)
             {
-                var position = steam.Position;
+                var position = stream.Position;
                 var instruction = reader.ReadUInt32();
                 var size = 0x04;
 
@@ -168,7 +168,7 @@ namespace Unknown
                         throw new FormatException($"unknown instruction at {Sort}#{position:X8}: {instruction:X8}");
                 }
 
-                steam.Position = position;
+                stream.Position = position;
                 commands.Add(reader.ReadBytes(size));
             }
 
@@ -178,16 +178,16 @@ namespace Unknown
         public byte[] ToBytes()
         {
             var bytes = new byte[0x0000_0020 + Commands.Sum(command => command.Length)];
-            using var steam = new MemoryStream(bytes);
-            using var writer = new BinaryWriter(steam);
+            using var stream = new MemoryStream(bytes);
+            using var writer = new BinaryWriter(stream);
 
             writer.Write(Encoding.ASCII.GetBytes("MINET"));
-            steam.Position = 0x0000_0010;
+            stream.Position = 0x0000_0010;
             writer.Write(X10);
             writer.Write(bytes.Length - 0x20);
             writer.Write(X18);
 
-            steam.Position = 0x0000_0020;
+            stream.Position = 0x0000_0020;
             foreach (var command in Commands) writer.Write(command);
 
             return bytes;
