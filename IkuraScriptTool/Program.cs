@@ -24,6 +24,11 @@ namespace Ikura
                         case "-i":
                             mode = args[0];
                             break;
+                        case "-E":
+                        case "-I":
+                            mode = args[0];
+                            path = "SNR";
+                            break;
                         default:
                             if (File.Exists(args[0]))
                             {
@@ -54,18 +59,16 @@ namespace Ikura
                     break;
             }
 
-            var scripts = Array.Empty<IkuraScript>();
             switch (mode)
             {
                 case "-e":
                     _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
+                {
                     Environment.SetEnvironmentVariable("ISF_PATH", path);
-                    using (var stream = File.OpenRead(path))
-                    using (var reader = new BinaryReader(stream))
-                    {
-                        scripts = reader.ReadIkuraScripts();
-                    }
+                    using var stream = File.OpenRead(path);
+                    using var reader = new BinaryReader(stream);
+                    var scripts = reader.ReadIkuraScripts();
 
                     Directory.CreateDirectory($"{path}~");
 
@@ -85,17 +88,16 @@ namespace Ikura
                             }
                         }
                     }
-
+                }
                     break;
                 case "-i":
                     _encoding ??= Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
+                {
                     Environment.SetEnvironmentVariable("ISF_PATH", path);
-                    using (var stream = File.OpenRead(path))
-                    using (var reader = new BinaryReader(stream))
-                    {
-                        scripts = reader.ReadIkuraScripts();
-                    }
+                    using var stream = File.OpenRead(path);
+                    using var reader = new BinaryReader(stream);
+                    var scripts = reader.ReadIkuraScripts();
 
                     foreach (var script in scripts)
                     {
@@ -128,18 +130,87 @@ namespace Ikura
 
                     var filename = $"{path}_{_encoding.WebName}";
                     Console.WriteLine($"Write {filename}");
-                    using (var stream = File.Create(filename))
-                    using (var writer = new BinaryWriter(stream))
+                    using var s = File.Create(filename);
+                    using var w = new BinaryWriter(s);
+                    w.WriteIkuraScripts(scripts);
+                }
+                    break;
+                case "-E":
+                    _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
+                    Console.WriteLine($"Read {Path.GetFullPath(path)}");
+                {
+                    using var stream = File.OpenRead(path);
+                    using var reader = new BinaryReader(stream);
+                    var scripts = reader.ReadRomanceScripts();
+
+                    Directory.CreateDirectory($"{path}~");
+
+                    foreach (var script in scripts)
                     {
-                        writer.WriteIkuraScripts(scripts);
+                        if (!script.HasText()) continue;
+                        Console.WriteLine($"Export {script.Name}");
+                        using var writer = File.CreateText($"{path}~/{script.Name}.txt");
+                        for (var i = 0; i < script.Commands.Length; i++)
+                        {
+                            foreach (var line in Export(script.Commands[i]))
+                            {
+                                writer.WriteLine($">{script.Commands[i][0x00]:X2}");
+                                writer.WriteLine($"◇{i:D4}◇{line}");
+                                writer.WriteLine($"◆{i:D4}◆{line}");
+                                writer.WriteLine();
+                            }
+                        }
+                    }
+                }
+                    break;
+                case "-I":
+                    _encoding ??= Encoding.GetEncoding("GBK");
+                    Console.WriteLine($"Read {Path.GetFullPath(path)}");
+                {
+                    using var stream = File.OpenRead(path);
+                    using var reader = new BinaryReader(stream);
+                    var scripts = reader.ReadRomanceScripts();
+
+                    foreach (var script in scripts)
+                    {
+                        if (!script.HasText()) continue;
+                        if (!File.Exists($"{path}~/{script.Name}.txt")) continue;
+                        Console.WriteLine($"Import {script.Name}");
+                        var translated = new string[script.Commands.Length][];
+                        foreach (var line in File.ReadLines($"{path}~/{script.Name}.txt"))
+                        {
+                            var m = Regex.Match(line, @"◆(\d+)◆(.+$)");
+                            if (!m.Success) continue;
+
+                            var index = int.Parse(m.Groups[1].Value);
+                            var text = m.Groups[2].Value;
+
+                            var lines = translated[index] ?? Array.Empty<string>();
+                            Array.Resize(ref lines, lines.Length + 1);
+                            lines[lines.Length - 1] = text;
+                            translated[index] = lines;
+                        }
+
+                        for (var i = 0; i < script.Commands.Length; i++)
+                        {
+                            if (translated[i] == null) continue;
+                            script.Commands[i] = Import(script.Commands[i], translated[i]);
+                        }
                     }
 
+                    var filename = $"{path}_{_encoding.WebName}";
+                    Console.WriteLine($"Write {filename}");
+                    using var s = File.Create(filename);
+                    using var w = new BinaryWriter(s);
+                    w.WriteRomanceScripts(scripts);
+                }
                     break;
                 default:
-                    Array.Resize(ref scripts, 0);
                     Console.WriteLine("Usage:");
                     Console.WriteLine("  Export text : IkuraScriptTool -e [ISF] [encoding]");
                     Console.WriteLine("  Import text : IkuraScriptTool -i [ISF] [encoding]");
+                    Console.WriteLine("  Export text : IkuraScriptTool -E [SNR] [encoding]");
+                    Console.WriteLine("  Import text : IkuraScriptTool -I [SNR] [encoding]");
                     Console.WriteLine("Press any key to continue...");
                     Console.ReadKey();
                     return;
@@ -150,8 +221,6 @@ namespace Ikura
 
         private const string FileHead = "SM2MPX10";
 
-        private const string FileType = "ISF";
-
         private static IkuraScript[] ReadIkuraScripts(this BinaryReader reader)
         {
             var head = _encoding.GetString(reader.ReadBytes(8));
@@ -159,7 +228,7 @@ namespace Ikura
             var count = reader.ReadInt32();
             _ = reader.ReadInt32();
             var type = _encoding.GetString(reader.ReadBytes(12).TrimEnd());
-            if (type != FileType) throw new NotSupportedException($"Not supported type: {type}.");
+            if (type != "ISF") throw new NotSupportedException($"Not supported type: {type}.");
             var offset = reader.ReadInt32();
 
             var scripts = new IkuraScript[count];
@@ -180,6 +249,35 @@ namespace Ikura
             return scripts;
         }
 
+        private static RomanceScript[] ReadRomanceScripts(this BinaryReader reader)
+        {
+            var head = _encoding.GetString(reader.ReadBytes(8));
+            if (head != FileHead) throw new NotSupportedException($"Not supported version: {head}.");
+            var count = reader.ReadInt32();
+            _ = reader.ReadInt32();
+            var type = _encoding.GetString(reader.ReadBytes(12).TrimEnd());
+            if (type != "SNR") throw new NotSupportedException($"Not supported type: {type}.");
+            var offset = reader.ReadInt32();
+
+            var scripts = new List<RomanceScript>(count);
+
+            for (var i = 0; i < count; i++)
+            {
+                reader.BaseStream.Position = offset + i * 0x14;
+                var name = _encoding.GetString(reader.ReadBytes(0x0C).TrimEnd());
+                if (!name.ToUpperInvariant().EndsWith(".SNR")) continue;
+                var pos = reader.ReadInt32();
+                var size = reader.ReadInt32();
+
+                reader.BaseStream.Position = pos;
+                var bytes = reader.ReadBytes(size);
+
+                scripts.Add(new RomanceScript(name, bytes));
+            }
+
+            return scripts.ToArray();
+        }
+
         private static void WriteIkuraScripts(this BinaryWriter writer, IkuraScript[] scripts)
         {
             var offset = (uint)(0x0000_0020 + 0x14 * scripts.Length);
@@ -190,7 +288,7 @@ namespace Ikura
             writer.Write(offset - 0x04);
 
             Array.Clear(buffer, 0, buffer.Length);
-            _encoding.GetBytes(FileType).CopyTo(buffer, 0);
+            _encoding.GetBytes("ISF").CopyTo(buffer, 0);
             writer.Write(buffer);
             writer.Write(0x0000_0020);
 
@@ -200,7 +298,40 @@ namespace Ikura
 
                 writer.BaseStream.Position = 0x0000_0020 + i * 0x14;
                 Array.Clear(buffer, 0, buffer.Length);
-                Encoding.ASCII.GetBytes(scripts[i].Name).CopyTo(buffer, 0);
+                _encoding.GetBytes(scripts[i].Name).CopyTo(buffer, 0);
+                writer.Write(buffer);
+                writer.Write(offset);
+                writer.Write((uint)bytes.Length);
+
+                writer.BaseStream.Position = offset;
+                writer.Write(bytes);
+                offset += (uint)(bytes.Length + 0x0F) & ~0x0Fu;
+                var empty = new byte[offset - writer.BaseStream.Position];
+                writer.Write(empty);
+            }
+        }
+
+        private static void WriteRomanceScripts(this BinaryWriter writer, RomanceScript[] scripts)
+        {
+            var offset = (uint)(0x0000_0020 + 0x14 * scripts.Length);
+            offset = (offset + 0x0F) & ~0x0Fu;
+            var buffer = new byte[0x0C];
+            writer.Write(_encoding.GetBytes(FileHead));
+            writer.Write(scripts.Length);
+            writer.Write(offset - 0x04);
+
+            Array.Clear(buffer, 0, buffer.Length);
+            _encoding.GetBytes("SNR").CopyTo(buffer, 0);
+            writer.Write(buffer);
+            writer.Write(0x0000_0020);
+
+            for (var i = 0; i < scripts.Length; i++)
+            {
+                var bytes = scripts[i].ToBytes();
+
+                writer.BaseStream.Position = 0x0000_0020 + i * 0x14;
+                Array.Clear(buffer, 0, buffer.Length);
+                _encoding.GetBytes(scripts[i].Name).CopyTo(buffer, 0);
                 writer.Write(buffer);
                 writer.Write(offset);
                 writer.Write((uint)bytes.Length);
@@ -236,6 +367,37 @@ namespace Ikura
                         .ToArray();
                 case IkuraScript.Instruction.SETGAMEINFO:
                     return new[] { _encoding.GetString(args, 0, args.Length - 1) };
+                default:
+                    return Array.Empty<string>();
+            }
+        }
+
+        private static string[] Export(byte[] command)
+        {
+            // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
+            switch (command[0x00])
+            {
+                case 0x11:
+                {
+                    var prefix = command[0x01] > 0x7F ? 0x0F : 0x0E;
+                    return _encoding
+                        .GetString(command, prefix, command.Length - prefix - 0x02)
+                        .Split('\n');
+                }
+                case 0x14:
+                {
+                    var prefix = command[0x01] > 0x7F ? 0x04 : 0x03;
+                    return _encoding
+                        .GetString(command, prefix, command.Length - prefix - 0x01)
+                        .Split('\n');
+                }
+                case 0x3E:
+                {
+                    var prefix = command[0x01] > 0x7F ? 0x03 : 0x02;
+                    return _encoding
+                        .GetString(command, prefix, command.Length - prefix - 0x01)
+                        .Split('\n');
+                }
                 default:
                     return Array.Empty<string>();
             }
@@ -307,6 +469,89 @@ namespace Ikura
             return args;
         }
 
+        private static byte[] Import(byte[] command, string[] lines)
+        {
+            var text = string.Join("\n", lines);
+            if (_encoding.CodePage == 936) text = text.ReplaceGbkUnsupported();
+
+            // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
+            switch (command[0x00])
+            {
+                case 0x11:
+                {
+                    var bytes = _encoding.GetBytes(text);
+                    if (bytes.Length + 0x0F > 0x7F)
+                    {
+                        var size = bytes.Length + 0x11;
+                        Array.Resize(ref command, size);
+                        command[0x01] = (byte)((size >> 0x08) | 0x80);
+                        command[0x02] = (byte)(size & 0xFF);
+                        bytes.CopyTo(command, 0x0F);
+                        command[size - 0x02] = 0x00;
+                        command[size - 0x01] = 0x00;
+                    }
+                    else
+                    {
+                        var size = bytes.Length + 0x10;
+                        Array.Resize(ref command, size);
+                        command[0x01] = (byte)(size & 0xFF);
+                        bytes.CopyTo(command, 0x0E);
+                        command[size - 0x02] = 0x00;
+                        command[size - 0x01] = 0x00;
+                    }
+                }
+                    break;
+                case 0x14:
+                {
+                    var bytes = _encoding.GetBytes(text);
+                    if (bytes.Length + 0x04 > 0x7F)
+                    {
+                        var size = bytes.Length + 0x05;
+                        Array.Resize(ref command, size);
+                        command[0x01] = (byte)((size >> 0x08) | 0x80);
+                        command[0x02] = (byte)(size & 0xFF);
+                        bytes.CopyTo(command, 0x04);
+                        command[size - 0x01] = 0x00;
+                    }
+                    else
+                    {
+                        var size = bytes.Length + 0x04;
+                        Array.Resize(ref command, size);
+                        command[0x01] = (byte)(size & 0xFF);
+                        bytes.CopyTo(command, 0x03);
+                        command[size - 0x01] = 0x00;
+                    }
+                }
+                    break;
+                case 0x3E:
+                {
+                    var bytes = _encoding.GetBytes(text);
+                    if (bytes.Length + 0x03 > 0x7F)
+                    {
+                        var size = bytes.Length + 0x04;
+                        Array.Resize(ref command, size);
+                        command[0x01] = (byte)((size >> 0x08) | 0x80);
+                        command[0x02] = (byte)(size & 0xFF);
+                        bytes.CopyTo(command, 0x03);
+                        command[size - 0x01] = 0x00;
+                    }
+                    else
+                    {
+                        var size = bytes.Length + 0x03;
+                        Array.Resize(ref command, size);
+                        command[0x01] = (byte)(size & 0xFF);
+                        bytes.CopyTo(command, 0x02);
+                        command[size - 0x01] = 0x00;
+                    }
+                }
+                    break;
+                default:
+                    throw new NotSupportedException($"Import {command[0x00]:X2} is not supported");
+            }
+
+            return command;
+        }
+
         private static bool HasText(this IkuraScript script)
         {
             return script.Commands
@@ -319,6 +564,25 @@ namespace Ikura
                     IkuraScript.Instruction.MSGBOX => true,
                     IkuraScript.Instruction.MPM => true,
                     IkuraScript.Instruction.SETGAMEINFO => true,
+                    _ => false
+                });
+        }
+
+        private static bool HasText(this RomanceScript script)
+        {
+            return script.Commands
+                .Any(command => command[0x00] switch
+                {
+                    0x02 => false,
+                    0x03 => false,
+                    0x11 => true,
+                    0x14 => true,
+                    0x20 => false,
+                    0x28 => false,
+                    0x2C => false,
+                    0x31 => false,
+                    0x3D => false,
+                    0x3E => true,
                     _ => false
                 });
         }
