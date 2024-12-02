@@ -38,6 +38,7 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="ATool.cs"/>
+        <Compile Include="MultiFileStream.cs"/>
         <Compile Include="Properties\AssemblyInfo.cs"/>
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/>
