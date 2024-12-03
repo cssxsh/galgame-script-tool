@@ -82,7 +82,7 @@ namespace Will
                     _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                     using (var stream = File.OpenRead(path))
-                    using (var reader = new BinaryReader(stream, _jis))
+                    using (var reader = new BinaryReader(stream))
                     {
                         scripts = reader.ReadWillScripts();
                     }
@@ -212,9 +212,6 @@ namespace Will
 
         private static Encoding _encoding = Encoding.Default;
 
-        // ReSharper disable once FieldCanBeMadeReadOnly.Local
-        private static Encoding _jis = Encoding.GetEncoding("SHIFT-JIS");
-
         private const string FileHead = "ARCG";
 
         // language=regex
@@ -223,21 +220,19 @@ namespace Will
         private static WillScript[] ReadWillScripts(this BinaryReader reader)
         {
             var head = _encoding.GetString(reader.ReadBytes(4));
-            if (head != FileHead) throw new NotSupportedException($"Not supported version: {head}.");
+            if (head != FileHead) throw new NotSupportedException($"unsupported version: {head}.");
             var version = reader.ReadUInt32();
-            if (version != 0x0001_0000u) throw new NotSupportedException($"Not supported version: {version:X8}.");
+            if (version != 0x0001_0000u) throw new NotSupportedException($"unsupported version: {version:X8}.");
             var offset = reader.ReadUInt32(); // index offset
             _ = reader.ReadInt32(); // index size
             var folders = reader.ReadUInt16();
-            if (folders != 0x0000_0001u) throw new NotSupportedException($"Not supported folders: {folders}.");
+            if (folders != 0x0000_0001u) throw new NotSupportedException($"unsupported folders: {folders}.");
             var files = reader.ReadUInt32();
             var scripts = new WillScript[files];
 
             reader.BaseStream.Position = offset;
-            // var folder = _jis.GetString(reader.ReadBytes(reader.ReadByte() - 1).TrimEnd());
-            // if (folder.Length != 0) throw new NotSupportedException($"Not supported folder: {folder}.");
             var folder = reader.ReadUInt32();
-            if (folder != 0x0000_0004) throw new NotSupportedException($"Not supported folder: {folder:X8}.");
+            if (folder != 0x0000_0004) throw new NotSupportedException($"unsupported folder: {folder:X8}.");
             offset = reader.ReadUInt32();
             _ = reader.ReadUInt32(); // folder files count
 
@@ -245,7 +240,7 @@ namespace Will
             for (var i = 0; i < files; i++)
             {
                 var len = reader.ReadByte() - 1;
-                var name = _jis.GetString(reader.ReadBytes(len).TrimEnd());
+                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(len).TrimEnd());
                 offset = reader.ReadUInt32(); // file offset
                 var size = reader.ReadInt32(); // size offset
 
@@ -286,7 +281,7 @@ namespace Will
             var position = 0x0000_0020u;
             for (var i = 0; i < scripts.Length; i++)
             {
-                var bytes = _jis.GetBytes(scripts[i].Name);
+                var bytes = Encoding.GetEncoding(932).GetBytes(scripts[i].Name);
                 var len = (bytes.Length + 0x05) & ~0x03u;
                 Array.Resize(ref bytes, (int)(len - 1));
                 writer.Write((byte)len);
@@ -374,7 +369,7 @@ namespace Will
                         while (match.Success)
                         {
                             var temp = match.Groups[1].Success
-                                ? _jis.GetBytes(match.Groups[1].Value)
+                                ? Encoding.GetEncoding(932).GetBytes(match.Groups[1].Value)
                                 : _encoding.GetBytes(match.Groups[2].Value.ReplaceGbkUnsupported());
                             temp.CopyTo(bytes, index);
                             index += temp.Length;
@@ -388,7 +383,7 @@ namespace Will
                         while (match.Success)
                         {
                             var temp = match.Groups[1].Success
-                                ? _jis.GetBytes(match.Groups[1].Value)
+                                ? Encoding.GetEncoding(932).GetBytes(match.Groups[1].Value)
                                 : _encoding.GetBytes(match.Groups[2].Value);
                             buffer.AddRange(temp);
                             match = match.NextMatch();

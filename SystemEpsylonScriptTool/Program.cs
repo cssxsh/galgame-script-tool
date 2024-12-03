@@ -147,15 +147,15 @@ namespace SystemEpsylon
 
         private static SystemEpsylonScript[] ReadSystemEpsylonScripts(this BinaryReader reader)
         {
-            var head = _encoding.GetString(reader.ReadBytes(0x08));
-            if (head != FileHead) throw new NotSupportedException($"Not supported version: {head}.");
+            var head = Encoding.ASCII.GetString(reader.ReadBytes(0x08));
+            if (head != FileHead) throw new NotSupportedException($"unsupported version: {head}.");
             var count = reader.ReadInt32();
             var scripts = new SystemEpsylonScript[count];
 
             for (var i = 0x00; i < count; i++)
             {
                 reader.BaseStream.Position = 0x10 + i * 0x30;
-                var name = _encoding.GetString(reader.ReadBytes(0x20).TrimEnd());
+                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x20).TrimEnd());
                 var offset = reader.ReadUInt32();
                 var flags = reader.ReadUInt32();
                 var size = reader.ReadInt32();
@@ -172,7 +172,7 @@ namespace SystemEpsylon
 
         private static void WriteSystemEpsylonScripts(this BinaryWriter writer, SystemEpsylonScript[] scripts)
         {
-            writer.Write(_encoding.GetBytes(FileHead));
+            writer.Write(Encoding.ASCII.GetBytes(FileHead));
             writer.Write(scripts.Length);
             writer.Write(scripts.Length);
             var buffer = new byte[0x20];
@@ -184,7 +184,7 @@ namespace SystemEpsylon
 
                 writer.BaseStream.Position = 0x10 + i * 0x30;
                 Array.Clear(buffer, 0, buffer.Length);
-                _encoding.GetBytes(scripts[i].Name).CopyTo(buffer, 0);
+                Encoding.GetEncoding(932).GetBytes(scripts[i].Name).CopyTo(buffer, 0);
                 writer.Write(buffer);
                 writer.Write(offset);
                 writer.Write(scripts[i].Flags);
@@ -237,7 +237,7 @@ namespace SystemEpsylon
                     bytes.CopyTo(command, command[1]);
                     break;
                 default:
-                    throw new NotSupportedException($"Import {command[0]:X2} is not supported");
+                    throw new NotSupportedException($"Import {command[0]:X2} is unsupported");
             }
 
             return command;

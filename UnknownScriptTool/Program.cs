@@ -325,8 +325,8 @@ namespace Unknown
 
         private static UnknownScriptV2004[] ReadUnknownScriptV2004(this BinaryReader reader)
         {
-            var head = _encoding.GetString(reader.ReadBytes(0x04));
-            if (head != FileHead) throw new NotSupportedException($"Not supported version: {head}.");
+            var head = Encoding.ASCII.GetString(reader.ReadBytes(0x04));
+            if (head != FileHead) throw new NotSupportedException($"unsupported version: {head}.");
             _ = reader.ReadUInt32();
             var key = reader.ReadUInt32();
             var mask = (ushort)(((0x0065 * key + 0x0309) & 0xFFFF) + 0x0001);
@@ -346,7 +346,7 @@ namespace Unknown
             for (var i = 0; i < count; i++)
             {
                 s.Position = i * 0x90;
-                var name = _encoding.GetString(r.ReadBytes(0x80).TrimEnd());
+                var name = Encoding.GetEncoding(932).GetString(r.ReadBytes(0x80).TrimEnd());
                 var size = r.ReadInt32();
                 var sort = r.ReadUInt32();
                 var offset = data + r.ReadUInt32();
@@ -391,7 +391,7 @@ namespace Unknown
 
         private static void WriteUnknownScriptV2004(this BinaryWriter writer, UnknownScriptV2004[] scripts, uint key)
         {
-            writer.Write(_encoding.GetBytes(FileHead));
+            writer.Write(Encoding.ASCII.GetBytes(FileHead));
             writer.Write(0x0000_FFFF);
             writer.Write(key);
             writer.Write(scripts.Length);
@@ -406,7 +406,7 @@ namespace Unknown
                 var bytes = scripts[i].ToBytes();
 
                 s.Position = i * 0x90;
-                w.Write(_encoding.GetBytes(scripts[i].Name));
+                w.Write(Encoding.GetEncoding(932).GetBytes(scripts[i].Name));
                 s.Position = i * 0x90 + 0x80;
                 w.Write(bytes.Length);
                 w.Write(scripts[i].Sort);

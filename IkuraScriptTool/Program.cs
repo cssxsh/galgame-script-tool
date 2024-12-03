@@ -223,12 +223,12 @@ namespace Ikura
 
         private static IkuraScript[] ReadIkuraScripts(this BinaryReader reader)
         {
-            var head = _encoding.GetString(reader.ReadBytes(8));
-            if (head != FileHead) throw new NotSupportedException($"Not supported version: {head}.");
+            var head = Encoding.ASCII.GetString(reader.ReadBytes(0x08));
+            if (head != FileHead) throw new NotSupportedException($"unsupported version: {head}.");
             var count = reader.ReadInt32();
             _ = reader.ReadInt32();
-            var type = _encoding.GetString(reader.ReadBytes(12).TrimEnd());
-            if (type != "ISF") throw new NotSupportedException($"Not supported type: {type}.");
+            var type = Encoding.ASCII.GetString(reader.ReadBytes(0x0C).TrimEnd());
+            if (type != "ISF") throw new NotSupportedException($"unsupported type: {type}.");
             var offset = reader.ReadInt32();
 
             var scripts = new IkuraScript[count];
@@ -236,7 +236,7 @@ namespace Ikura
             for (var i = 0; i < count; i++)
             {
                 reader.BaseStream.Position = offset + i * 0x14;
-                var name = _encoding.GetString(reader.ReadBytes(0x0C).TrimEnd());
+                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x0C).TrimEnd());
                 var pos = reader.ReadInt32();
                 var size = reader.ReadInt32();
 
@@ -251,12 +251,12 @@ namespace Ikura
 
         private static RomanceScript[] ReadRomanceScripts(this BinaryReader reader)
         {
-            var head = _encoding.GetString(reader.ReadBytes(8));
-            if (head != FileHead) throw new NotSupportedException($"Not supported version: {head}.");
+            var head = Encoding.ASCII.GetString(reader.ReadBytes(0x08));
+            if (head != FileHead) throw new NotSupportedException($"unsupported version: {head}.");
             var count = reader.ReadInt32();
             _ = reader.ReadInt32();
-            var type = _encoding.GetString(reader.ReadBytes(12).TrimEnd());
-            if (type != "SNR") throw new NotSupportedException($"Not supported type: {type}.");
+            var type = Encoding.ASCII.GetString(reader.ReadBytes(0x0C).TrimEnd());
+            if (type != "SNR") throw new NotSupportedException($"unsupported type: {type}.");
             var offset = reader.ReadInt32();
 
             var scripts = new List<RomanceScript>(count);
@@ -264,7 +264,7 @@ namespace Ikura
             for (var i = 0; i < count; i++)
             {
                 reader.BaseStream.Position = offset + i * 0x14;
-                var name = _encoding.GetString(reader.ReadBytes(0x0C).TrimEnd());
+                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x0C).TrimEnd());
                 if (!name.ToUpperInvariant().EndsWith(".SNR")) continue;
                 var pos = reader.ReadInt32();
                 var size = reader.ReadInt32();
@@ -283,12 +283,12 @@ namespace Ikura
             var offset = (uint)(0x0000_0020 + 0x14 * scripts.Length);
             offset = (offset + 0x0F) & ~0x0Fu;
             var buffer = new byte[0x0C];
-            writer.Write(_encoding.GetBytes(FileHead));
+            writer.Write(Encoding.ASCII.GetBytes(FileHead));
             writer.Write(scripts.Length);
             writer.Write(offset - 0x04);
 
-            Array.Clear(buffer, 0, buffer.Length);
-            _encoding.GetBytes("ISF").CopyTo(buffer, 0);
+            Array.Clear(buffer, 0x00, buffer.Length);
+            Encoding.ASCII.GetBytes("ISF").CopyTo(buffer, 0x00);
             writer.Write(buffer);
             writer.Write(0x0000_0020);
 
@@ -297,8 +297,8 @@ namespace Ikura
                 var bytes = scripts[i].ToBytes();
 
                 writer.BaseStream.Position = 0x0000_0020 + i * 0x14;
-                Array.Clear(buffer, 0, buffer.Length);
-                _encoding.GetBytes(scripts[i].Name).CopyTo(buffer, 0);
+                Array.Clear(buffer, 0x00, buffer.Length);
+                Encoding.GetEncoding(932).GetBytes(scripts[i].Name).CopyTo(buffer, 0x00);
                 writer.Write(buffer);
                 writer.Write(offset);
                 writer.Write((uint)bytes.Length);
@@ -316,12 +316,12 @@ namespace Ikura
             var offset = (uint)(0x0000_0020 + 0x14 * scripts.Length);
             offset = (offset + 0x0F) & ~0x0Fu;
             var buffer = new byte[0x0C];
-            writer.Write(_encoding.GetBytes(FileHead));
+            writer.Write(Encoding.ASCII.GetBytes(FileHead));
             writer.Write(scripts.Length);
             writer.Write(offset - 0x04);
 
-            Array.Clear(buffer, 0, buffer.Length);
-            _encoding.GetBytes("SNR").CopyTo(buffer, 0);
+            Array.Clear(buffer, 0x00, buffer.Length);
+            Encoding.ASCII.GetBytes("SNR").CopyTo(buffer, 0x00);
             writer.Write(buffer);
             writer.Write(0x0000_0020);
 
@@ -330,8 +330,8 @@ namespace Ikura
                 var bytes = scripts[i].ToBytes();
 
                 writer.BaseStream.Position = 0x0000_0020 + i * 0x14;
-                Array.Clear(buffer, 0, buffer.Length);
-                _encoding.GetBytes(scripts[i].Name).CopyTo(buffer, 0);
+                Array.Clear(buffer, 0x00, buffer.Length);
+                Encoding.GetEncoding(932).GetBytes(scripts[i].Name).CopyTo(buffer, 0x00);
                 writer.Write(buffer);
                 writer.Write(offset);
                 writer.Write((uint)bytes.Length);
@@ -419,51 +419,51 @@ namespace Ikura
                 case IkuraScript.Instruction.CSET:
                 {
                     var bytes = _encoding.GetBytes(lines.Single());
-                    Array.Resize(ref args, 18 + bytes.Length);
-                    bytes.CopyTo(args, 18);
+                    Array.Resize(ref args, 0x12 + bytes.Length);
+                    bytes.CopyTo(args, 0x12);
                 }
                     break;
                 case IkuraScript.Instruction.CNS:
                 {
                     var bytes = _encoding.GetBytes(lines.Single());
-                    Array.Resize(ref args, 2 + bytes.Length);
-                    bytes.CopyTo(args, 2);
+                    Array.Resize(ref args, 0x02 + bytes.Length);
+                    bytes.CopyTo(args, 0x02);
                 }
                     break;
                 case IkuraScript.Instruction.PM:
                 case IkuraScript.Instruction.PMP:
                 {
                     var messages = lines.Select(line => _encoding.GetBytes(line)).ToArray();
-                    args = IkuraScript.Encode(args, 1, messages);
+                    args = IkuraScript.Encode(args, 0x01, messages);
                 }
                     break;
                 case IkuraScript.Instruction.MSGBOX:
                 {
                     var bytes = _encoding.GetBytes(lines.Single());
                     var end = args.Last();
-                    Array.Resize(ref args, 4 + bytes.Length + 2);
-                    bytes.CopyTo(args, 4);
-                    args[4 + bytes.Length] = 0x00;
-                    args[4 + bytes.Length + 1] = end;
+                    Array.Resize(ref args, 0x04 + bytes.Length + 0x02);
+                    bytes.CopyTo(args, 0x04);
+                    args[0x04 + bytes.Length] = 0x00;
+                    args[0x04 + bytes.Length + 0x01] = end;
                 }
                     break;
                 case IkuraScript.Instruction.MPM:
                     if (args[1] == 0) break;
                 {
                     var messages = lines.Select(line => _encoding.GetBytes(line)).ToArray();
-                    args = IkuraScript.Encode(args, 2, messages);
+                    args = IkuraScript.Encode(args, 0x02, messages);
                 }
                     break;
                 case IkuraScript.Instruction.SETGAMEINFO:
                 {
                     var bytes = _encoding.GetBytes(lines.Single());
-                    Array.Resize(ref args, 0 + bytes.Length + 1);
-                    bytes.CopyTo(args, 0);
-                    args[0 + bytes.Length] = 0x00;
+                    Array.Resize(ref args, 0x00 + bytes.Length + 0x01);
+                    bytes.CopyTo(args, 0x00);
+                    args[0x00 + bytes.Length] = 0x00;
                 }
                     break;
                 default:
-                    throw new NotSupportedException($"Import {instruction} is not supported");
+                    throw new NotSupportedException($"Import {instruction} is unsupported");
             }
 
             return args;
@@ -546,7 +546,7 @@ namespace Ikura
                 }
                     break;
                 default:
-                    throw new NotSupportedException($"Import {command[0x00]:X2} is not supported");
+                    throw new NotSupportedException($"Import {command[0x00]:X2} is unsupported");
             }
 
             return command;

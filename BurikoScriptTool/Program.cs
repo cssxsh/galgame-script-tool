@@ -189,7 +189,7 @@ namespace BGI
 
         private static KeyValuePair<string, byte[]>[] ReadBurikoArchive(this BinaryReader reader)
         {
-            var head = _encoding.GetString(reader.ReadBytes(0x0C));
+            var head = Encoding.ASCII.GetString(reader.ReadBytes(0x0C));
             if (head == "BURIKO ARC20") return ReadBurikoArchiveV2(reader);
             if (head != "PackFile    ") throw new FormatException($"unsupported: {head}");
             var count = reader.ReadUInt32();
@@ -206,11 +206,10 @@ namespace BGI
             var count = reader.ReadUInt32();
             var patches = new KeyValuePair<string, byte[]>[count];
 
-            const int table = 0x0000_0010;
             for (var i = 0; i < count; i++)
             {
-                reader.BaseStream.Position = table + i * 0x80;
-                var name = _encoding.GetString(reader.ReadBytes(0x60).TrimEnd());
+                reader.BaseStream.Position = 0x0000_0010 + i * 0x80;
+                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x60).TrimEnd());
                 var offset = 0x10 + count * 0x80 + reader.ReadUInt32();
                 var size = reader.ReadInt32();
                 reader.BaseStream.Position = offset;
