@@ -315,6 +315,7 @@ namespace TamaSoft
                     _ = reader.ReadBytes(reader.ReadInt32());
                     var name = lines.Length == 0x01 ? Array.Empty<byte>() : _encoding.GetBytes(lines[0]);
                     var text = _encoding.GetBytes(lines.Last());
+                    TamaSoftSecret.Handle(text, key);
                     var buffer = new byte[0x14 + name.Length + picture.Length + text.Length];
                     using var s = new MemoryStream(buffer);
                     using var w = new BinaryWriter(s);
