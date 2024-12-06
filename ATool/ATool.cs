@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace ATool
 {
@@ -15,6 +16,11 @@ namespace ATool
             }
 
             return target;
+        }
+
+        public static string PatchFileName(this string path, string version)
+        {
+            return $"{Path.GetFileNameWithoutExtension(path)}_{version}{Path.GetExtension(path)}";
         }
 
         public static void Rot(this byte[] source)
