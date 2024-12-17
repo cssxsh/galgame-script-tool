@@ -139,8 +139,7 @@ namespace Will
                         }
                     }
 
-                    var filename =
-                        $"{Path.GetFileNameWithoutExtension(path)}_{_encoding.WebName}{Path.GetExtension(path)}";
+                    var filename = path.PatchFileName(_encoding.WebName);
                     Console.WriteLine($"Write {filename}");
                     using (var stream = File.Create(filename))
                     using (var writer = new BinaryWriter(stream))
@@ -192,8 +191,7 @@ namespace Will
                         mbf.Merge(collection);
                     }
 
-                    var name =
-                        $"{Path.GetFileNameWithoutExtension(path)}_{_encoding.WebName}{Path.GetExtension(path)}";
+                    var name = path.PatchFileName(_encoding.WebName);
                     File.WriteAllBytes(name, arc.ToBytes(_encoding));
                 }
                     break;
@@ -247,7 +245,6 @@ namespace Will
                 var position = reader.BaseStream.Position;
                 reader.BaseStream.Position = offset;
                 var bytes = reader.ReadBytes(size);
-                // Console.WriteLine($"file: {name.ReplaceGbkUnsupported()}");
 
                 scripts[i] = new WillScript(name, bytes);
                 reader.BaseStream.Position = position;

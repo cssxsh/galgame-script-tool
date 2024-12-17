@@ -128,7 +128,7 @@ namespace Ikura
                         }
                     }
 
-                    var filename = $"{path}_{_encoding.WebName}";
+                    var filename = path.PatchFileName(_encoding.WebName);
                     Console.WriteLine($"Write {filename}");
                     using var s = File.Create(filename);
                     using var w = new BinaryWriter(s);
@@ -198,7 +198,7 @@ namespace Ikura
                         }
                     }
 
-                    var filename = $"{path}_{_encoding.WebName}";
+                    var filename = path.PatchFileName(_encoding.WebName);
                     Console.WriteLine($"Write {filename}");
                     using var s = File.Create(filename);
                     using var w = new BinaryWriter(s);

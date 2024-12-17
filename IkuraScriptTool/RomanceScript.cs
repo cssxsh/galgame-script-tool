@@ -76,7 +76,7 @@ namespace Ikura
                         var raw = reader.ReadBytes(size > 0x7F ? size - 0x03 : size - 0x02);
                         if (!Debugger.IsAttached) break;
                         var text = Encoding.ASCII.GetString(raw.TrimEnd());
-                        Debug.WriteLine($"{instruction:X2} at {Name}:{position:X8} '{text}'");
+                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} '{text}'");
                     }
                         break;
                     case 0x04:
@@ -105,7 +105,7 @@ namespace Ikura
                         if (end != 0x00) throw new FormatException($"{instruction:X2} at {Name}:{position:X8}");
                         if (!Debugger.IsAttached) break;
                         var text = Encoding.GetEncoding(932).GetString(raw.TrimEnd());
-                        Debug.WriteLine($"{instruction:X2} at {Name}:{position:X8} {a:X8}, {b:X8}, {c:X8}, '{text}', {end:X2}");
+                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} {a:X8}, {b:X8}, {c:X8}, '{text}', {end:X2}");
                     }
                         break;
                     case 0x12:
@@ -118,7 +118,7 @@ namespace Ikura
                         var raw = reader.ReadBytes(size > 0x7F ? size - 0x04 : size - 0x03);
                         if (!Debugger.IsAttached) break;
                         var text = Encoding.GetEncoding(932).GetString(raw.TrimEnd());
-                        Debug.WriteLine($"{instruction:X2} at {Name}:{position:X8} {index:X2}, '{text}'");
+                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} {index:X2}, '{text}'");
                     }
                         break;
                     case 0x15:
@@ -145,7 +145,7 @@ namespace Ikura
                         var b = reader.ReadUInt32();
                         if (!Debugger.IsAttached) break;
                         var text = Encoding.ASCII.GetString(raw.TrimEnd());
-                        Debug.WriteLine($"{instruction:X2} at {Name}:{position:X8} {index:X2}, {a:X2}, '{text}', {b:X2}");
+                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} {index:X2}, {a:X2}, '{text}', {b:X2}");
                     }
                         break;
                     case 0x21:
@@ -162,7 +162,7 @@ namespace Ikura
                         var raw = reader.ReadBytes(size > 0x7F ? size - 0x03 : size - 0x02);
                         if (!Debugger.IsAttached) break;
                         var text = Encoding.ASCII.GetString(raw.TrimEnd());
-                        Debug.WriteLine($"{instruction:X2} at {Name}:{position:X8} '{text}'");
+                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} '{text}'");
                     }
                         break;
                     case 0x29:
@@ -175,7 +175,7 @@ namespace Ikura
                         var raw = reader.ReadBytes(size > 0x7F ? size - 0x03 : size - 0x02).TrimEnd();
                         if (!Debugger.IsAttached) break;
                         var text = Encoding.ASCII.GetString(raw);
-                        Debug.WriteLine($"{instruction:X2} at {Name}:{position:X8} '{text}'");
+                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} '{text}'");
                     }
                         break;
                     case 0x2D:
@@ -189,7 +189,7 @@ namespace Ikura
                         var raw = reader.ReadBytes(size > 0x7F ? size - 0x03 : size - 0x02).TrimEnd();
                         if (!Debugger.IsAttached) break;
                         var text = Encoding.ASCII.GetString(raw);
-                        Debug.WriteLine($"{instruction:X2} at {Name}:{position:X8} '{text}'");
+                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} '{text}'");
                     }
                         break;
                     case 0x32:
@@ -214,7 +214,7 @@ namespace Ikura
                         var raw = reader.ReadBytes(size > 0x7F ? size - 0x13 : size - 0x12);
                         if (!Debugger.IsAttached) break;
                         var text = Encoding.GetEncoding(932).GetString(raw.TrimEnd());
-                        Debug.WriteLine($"{instruction:X2} at {Name}:{position:X8} {a:X8}, {b:X8}, {c:X8}, {d:X8} '{text}'");
+                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} {a:X8}, {b:X8}, {c:X8}, {d:X8} '{text}'");
                     }
                         break;
                     // TITLE
@@ -223,7 +223,7 @@ namespace Ikura
                         var raw = reader.ReadBytes(size > 0x7F ? size - 0x03 : size - 0x02).TrimEnd();
                         if (!Debugger.IsAttached) break;
                         var text = Encoding.GetEncoding(932).GetString(raw);
-                        Debug.WriteLine($"{instruction:X2} at {Name}:{position:X8} '{text}'");
+                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} '{text}'");
                     }
                         break;
                     case 0x3F:
@@ -265,7 +265,7 @@ namespace Ikura
 
         public byte[] ToBytes()
         {
-            var offset = (uint)(0x1C + Labels.Length * 0x04);
+            var offset = (uint)(0x0000_001C + Labels.Length * 0x04);
             var bytes = new byte[offset + Commands.Sum(command => command.Length)];
             using var stream = new MemoryStream(bytes);
             using var writer = new BinaryWriter(stream);

@@ -131,7 +131,7 @@ namespace TamaSoft
                         }
                     }
 
-                    var filename = $"{Path.GetFileNameWithoutExtension(path)}_{_encoding.WebName}.epk";
+                    var filename = path.PatchFileName(_encoding.WebName);
                     Console.WriteLine($"Write {filename}");
                     using var s = File.Create(filename);
                     using var w = new BinaryWriter(s);
@@ -197,9 +197,9 @@ namespace TamaSoft
             var time = DateTime.Now.ToFileTimeUtc();
 
             writer.Write(Encoding.ASCII.GetBytes(FileHead));
-            writer.Write(0x0000_0020 + scripts.Length * 0x28);
-            writer.Write((ulong)0);
-            writer.Write((ulong)0);
+            writer.Write((uint)offsetOfName);
+            writer.Write(offsetOfData);
+            writer.Write(offsetOfData);
             writer.Write(scripts.Length);
 
             for (var i = 0; i < scripts.Length; i++)

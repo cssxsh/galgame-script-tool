@@ -69,9 +69,9 @@ namespace TamaSoft
                     case 0x0000_0101:
                     {
                         size += 0x04;
-                        var t = reader.ReadInt32();
-                        size += t;
-                        var raw = reader.ReadBytes(t);
+                        var len = reader.ReadInt32();
+                        size += len;
+                        var raw = reader.ReadBytes(len);
                         if (!Debugger.IsAttached) break;
                         TamaSoftSecret.Handle(raw, Key);
                         var text = Encoding.GetEncoding(932).GetString(raw);
@@ -188,8 +188,11 @@ namespace TamaSoft
                             s[i] = Encoding.GetEncoding(932).GetString(r[i]);
                         }
 
-                        Debug.WriteLine(
-                            $"{Name}:{position:X8}>SELECT '{s[0]}', {v[0]:X8}, '{s[1]}', {v[1]:X8}, '{s[2]}', {v[2]:X8}, '{s[3]}', {v[3]:X8}");
+                        Debug.Write($"{Name}:{position:X8}>SELECT " +
+                                    $"'{s[0]}', {v[0]:X8}, " +
+                                    $"'{s[1]}', {v[1]:X8}, " +
+                                    $"'{s[2]}', {v[2]:X8}, " +
+                                    $"'{s[3]}', {v[3]:X8}");
                     }
                         break;
                     // @GOTO

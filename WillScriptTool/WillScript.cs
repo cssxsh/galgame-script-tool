@@ -16,8 +16,6 @@ namespace Will
             Name = name;
 
             var commands = new List<byte[]>();
-            // ReSharper disable once RedundantAssignment
-            var temp = Array.Empty<byte>();
             using var steam = new MemoryStream(bytes);
             using var reader = new BinaryReader(steam);
             while (steam.Position < bytes.Length)
@@ -27,7 +25,7 @@ namespace Will
                 if (size == 0x00 || size == 0xFF)
                 {
                     steam.Position = position;
-                    temp = reader.ReadBytes((int)(bytes.Length - position));
+                    var temp = reader.ReadBytes((int)(bytes.Length - position));
                     if (temp.Any(b => b != size)) throw new FormatException($"{name} at 0x{position:X8}");
                     commands.Add(temp);
                     break;

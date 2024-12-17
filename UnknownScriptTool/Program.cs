@@ -193,7 +193,7 @@ namespace Unknown
                                 }
                             }
 
-                            var filename = $"{Path.GetFileNameWithoutExtension(path)}_{_encoding.WebName}.aqa";
+                            var filename = path.PatchFileName(_encoding.WebName);
                             Console.WriteLine($"Write {filename}");
                             using var s = File.Create(filename);
                             using var w = new BinaryWriter(s);
@@ -266,7 +266,7 @@ namespace Unknown
                                 }
                             }
 
-                            var filename = $"{Path.GetFileNameWithoutExtension(path)}_{_encoding.WebName}.dat";
+                            var filename = path.PatchFileName(_encoding.WebName);
                             Console.WriteLine($"Write {filename}");
                             using var s = File.Create(filename);
                             using var w = new BinaryWriter(s);

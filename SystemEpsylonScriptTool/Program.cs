@@ -120,8 +120,7 @@ namespace SystemEpsylon
                         }
                     }
 
-                    var filename =
-                        $"{Path.GetFileNameWithoutExtension(path)}_{_encoding.WebName}{Path.GetExtension(path)}";
+                    var filename = path.PatchFileName(_encoding.WebName);
                     Console.WriteLine($"Write {filename}");
                     using (var stream = File.Create(filename))
                     using (var writer = new BinaryWriter(stream))
