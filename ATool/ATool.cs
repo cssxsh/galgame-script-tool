@@ -5,6 +5,8 @@ namespace ATool
 {
     public static class ATool
     {
+        #region Text
+        
         public static byte[] TrimEnd(this byte[] source)
         {
             var target = (byte[])source.Clone();
@@ -23,22 +25,26 @@ namespace ATool
             return $"{Path.GetFileNameWithoutExtension(path)}_{version}{Path.GetExtension(path)}";
         }
 
-        public static void Rot(this byte[] source)
-        {
-            for (var i = 0; i < source.Length; i++)
-            {
-                source[i] = (byte)((source[i] >> 0x04) | (source[i] << 0x04));
-            }
-        }
-
         public static string ReplaceGbkUnsupported(this string source, bool force = true)
         {
             var chars = source
                 .Replace("ﾃﾞﾊﾞｯｸﾞ", force ? "偵錯   " : "Debug  ")
-                .Replace("ﾌｧｲﾙ", force ? "文卷" : "File")
-                .Replace("ﾊﾟﾗﾒｰﾀ", force ? "助変数" : "Param ") // 媒介変数 / Parameter
+                .Replace("ﾒｯｾｰｼﾞ", force ? "伝言  " : "MSG   ") // Message
+                .Replace("ﾊﾟﾗﾒｰﾀ", force ? "助変数" : "PARAM ") // 媒介変数 / Parameter
+                .Replace("ｽﾋﾟｰﾄﾞ", force ? "速度  " : "Speed ")
+                .Replace("ﾀｲﾐﾝｸﾞ", force ? "時機  " : "Timing")
+                .Replace("ｳｨﾝﾄﾞｳ", force ? "窓口  " : "Window")
+                .Replace("ｲﾍﾞﾝﾄ", force ? "事件 " : "Event")
                 .Replace("ｽｷｯﾌﾟ", force ? "躍進 " : "Skip ")
+                .Replace("ｺﾒﾝﾄ", force ? "評釈" : "COMM") // Comment
+                .Replace("ﾌｧｲﾙ", force ? "文卷" : "File")
+                .Replace("ﾌﾗｸﾞ", force ? "旗幟" : "Flag")
+                .Replace("ｹﾞｰﾑ", force ? "遊戯" : "Game")
+                .Replace("ﾛｰﾄﾞ", force ? "荷込" : "Load")
                 .Replace("ﾒﾆｭｰ", force ? "菜単" : "Menu")
+                .Replace("ｾｰﾌﾞ", force ? "保存" : "Save")
+                .Replace("ｻｲｽﾞ", force ? "号数" : "Size")
+                .Replace("ｷｰ", force ? "鍵" : "Ｋ") // Key
                 .Replace("⇒", "=>") // '\u226A'
                 .Replace("≪", "<<") // '\u226A'
                 .Replace("≫", ">>") // '\u226B'
@@ -236,7 +242,11 @@ namespace ATool
 
             return new string(chars);
         }
+        
+        #endregion
 
+        #region Bin
+        
         public static void CopyOverlapped(this byte[] data, int src, int dst, int count)
         {
             if (dst > src)
@@ -254,5 +264,15 @@ namespace ATool
                 Buffer.BlockCopy(data, src, data, dst, count);
             }
         }
+
+        public static void Rot(this byte[] source)
+        {
+            for (var i = 0; i < source.Length; i++)
+            {
+                source[i] = (byte)((source[i] >> 0x04) | (source[i] << 0x04));
+            }
+        }
+
+        #endregion
     }
 }
