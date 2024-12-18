@@ -281,7 +281,7 @@ namespace ATool
 
         #region Kernel32
 
-        public static byte[] ReadResource(string path, string name, string type)
+        public static byte[] ReadResource(this string path, string name, string type)
         {
             var module = LoadLibraryEx(path, IntPtr.Zero, 0x02 | 0x20);
             if (module == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
@@ -304,7 +304,7 @@ namespace ATool
             }
         }
 
-        public static string[] ReadResourceTypes(string path)
+        public static string[] ReadResourceTypes(this string path)
         {
             var module = LoadLibraryEx(path, IntPtr.Zero, 0x02 | 0x20);
             if (module == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
@@ -323,7 +323,7 @@ namespace ATool
             }
         }
 
-        public static string[] ReadResourceNames(string path, string type)
+        public static string[] ReadResourceNames(this string path, string type)
         {
             var module = LoadLibraryEx(path, IntPtr.Zero, 0x02);
             if (module == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
