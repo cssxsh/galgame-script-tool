@@ -1,12 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace ATool
 {
     public static class ATool
     {
         #region Text
-        
+
         public static byte[] TrimEnd(this byte[] source)
         {
             var target = (byte[])source.Clone();
@@ -165,7 +169,7 @@ namespace ATool
 
             return new string(chars);
         }
-        
+
         public static string ReplaceHalfWidthKana(this string source)
         {
             var chars = source.ToCharArray();
@@ -242,11 +246,11 @@ namespace ATool
 
             return new string(chars);
         }
-        
+
         #endregion
 
         #region Bin
-        
+
         public static void CopyOverlapped(this byte[] data, int src, int dst, int count)
         {
             if (dst > src)
@@ -272,6 +276,105 @@ namespace ATool
                 source[i] = (byte)((source[i] >> 0x04) | (source[i] << 0x04));
             }
         }
+
+        #endregion
+
+        #region Kernel32
+
+        public static byte[] ReadResource(string path, string name, string type)
+        {
+            var module = LoadLibraryEx(path, IntPtr.Zero, 0x02 | 0x20);
+            if (module == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
+            try
+            {
+                var res = FindResource(module, name, type);
+                if (res == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
+                var glob = LoadResource(module, res);
+                if (glob == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
+                var src = LockResource(glob);
+                if (src == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
+                var size = SizeofResource(module, res);
+                var dst = new byte[size];
+                Marshal.Copy(src, dst, 0, dst.Length);
+                return dst;
+            }
+            finally
+            {
+                FreeLibrary(module);
+            }
+        }
+
+        public static string[] ReadResourceTypes(string path)
+        {
+            var module = LoadLibraryEx(path, IntPtr.Zero, 0x02 | 0x20);
+            if (module == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
+            var types = new HashSet<string>();
+            try
+            {
+                if (!EnumResourceTypes(module,
+                        (hModule, lpszType, lParam) =>
+                            types.Add(Marshal.PtrToStringAuto(lpszType) ?? $"#{lpszType.ToInt32()}"),
+                        IntPtr.Zero)) throw new Win32Exception(Marshal.GetLastWin32Error());
+                return types.ToArray();
+            }
+            finally
+            {
+                FreeLibrary(module);
+            }
+        }
+
+        public static string[] ReadResourceNames(string path, string type)
+        {
+            var module = LoadLibraryEx(path, IntPtr.Zero, 0x02);
+            if (module == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
+            var names = new HashSet<string>();
+            try
+            {
+                if (!EnumResourceNames(module, type,
+                        (hModule, lpszType, lpszName, lParam) =>
+                            names.Add(Marshal.PtrToStringAuto(lpszName) ?? $"#{lpszName.ToInt32()}"),
+                        IntPtr.Zero)) throw new Win32Exception(Marshal.GetLastWin32Error());
+                return names.ToArray();
+            }
+            finally
+            {
+                FreeLibrary(module);
+            }
+        }
+
+        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern IntPtr LoadLibraryEx(string lpFileName, IntPtr hReservedNull, uint dwFlags);
+
+        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool FreeLibrary(IntPtr hModule);
+
+        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern IntPtr FindResource(IntPtr hModule,
+            string lpName, string lpType);
+
+        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern IntPtr LoadResource(IntPtr hModule,
+            IntPtr hResource);
+
+        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern uint SizeofResource(IntPtr hModule,
+            IntPtr hResource);
+
+        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern IntPtr LockResource(IntPtr hResData);
+
+        private delegate bool EnumResTypeProc(IntPtr hModule, IntPtr lpszType, IntPtr lParam);
+
+        private delegate bool EnumResNameProc(IntPtr hModule, IntPtr lpszType, IntPtr lpszName, IntPtr lParam);
+
+        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool EnumResourceTypes(IntPtr hModule,
+            [MarshalAs(UnmanagedType.FunctionPtr)] EnumResTypeProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool EnumResourceNames(IntPtr hModule, string lpszType,
+            [MarshalAs(UnmanagedType.FunctionPtr)] EnumResNameProc lpEnumFunc, IntPtr lParam);
 
         #endregion
     }
