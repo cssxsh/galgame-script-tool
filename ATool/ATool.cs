@@ -277,6 +277,14 @@ namespace ATool
             }
         }
 
+        public static void EndianReverse(this byte[] source)
+        {
+            for (var offset = 0; offset < source.Length; offset += 0x04)
+            {
+                Array.Reverse(source, offset, 0x04);
+            }
+        }
+
         #endregion
 
         #region Kernel32
