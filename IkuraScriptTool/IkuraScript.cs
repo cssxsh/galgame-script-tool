@@ -691,7 +691,7 @@ namespace Ikura
                 yield return Encoding.ASCII.GetBytes(reader.ReadToEnd());
             }
 
-            var path = Environment.GetEnvironmentVariable("ISF_PATH") ?? ".";
+            var path = Environment.GetEnvironmentVariable("GAME_PATH") ?? ".";
             foreach (var exe in Directory.GetFiles(path, "*.exe"))
             {
                 using var stream = File.OpenRead(exe);

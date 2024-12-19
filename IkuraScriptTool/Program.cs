@@ -65,7 +65,7 @@ namespace Ikura
                     _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
-                    Environment.SetEnvironmentVariable("ISF_PATH", path);
+                    Environment.SetEnvironmentVariable("GAME_PATH", Path.GetDirectoryName(path));
                     using var stream = File.OpenRead(path);
                     using var reader = new BinaryReader(stream);
                     var scripts = reader.ReadIkuraScripts();
@@ -94,7 +94,7 @@ namespace Ikura
                     _encoding ??= Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
-                    Environment.SetEnvironmentVariable("ISF_PATH", path);
+                    Environment.SetEnvironmentVariable("GAME_PATH", Path.GetDirectoryName(path));
                     using var stream = File.OpenRead(path);
                     using var reader = new BinaryReader(stream);
                     var scripts = reader.ReadIkuraScripts();
