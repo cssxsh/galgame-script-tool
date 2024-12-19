@@ -38,6 +38,8 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="ATool.cs"/>
+        <Compile Include="Hash.cs"/>
+        <Compile Include="MersenneTwister.cs"/>
         <Compile Include="MultiFileStream.cs"/>
         <Compile Include="Properties\AssemblyInfo.cs"/>
     </ItemGroup>
