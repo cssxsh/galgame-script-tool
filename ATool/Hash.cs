@@ -15,7 +15,7 @@ namespace ATool
                 var c = n << (width - 0x08);
                 for (var k = 0x00; k < 0x08; k++)
                 {
-                    c = (c << 1) ^ (0 != (c & 0x8000_0000u) ? polynomial : 0x0000_0000) ;
+                    c = (c << 1) ^ (0 != (c & 0x8000_0000u) ? polynomial : 0x0000_0000);
                 }
 
                 table[n] = c;

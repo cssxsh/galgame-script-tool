@@ -8,7 +8,7 @@ namespace Ikura
         public static void Handle(byte[] data, byte[] secret)
         {
             var key = secret.CreateKey();
-            for (var i = 0; i < data.Length; i++)
+            for (var i = 0x00; i < data.Length; i++)
             {
                 if (i % key.Length == 0x00) secret.UpdateKey(key, i / key.Length);
                 data[i] ^= key[i % key.Length];
@@ -18,15 +18,15 @@ namespace Ikura
         private static byte[] CreateKey(this byte[] secret)
         {
             var length = new byte[0x02];
-            for (var i = 0; i < length.Length; i++)
+            for (var i = 0x00; i < length.Length; i++)
             {
-                length[i] = EncodeHex((byte)(Chr2HexCode(secret[0x500 + i]) - Chr2HexCode(secret[0x100 + i])));
+                length[i] = EncodeHex((byte)(Chr2HexCode(secret[0x0500 + i]) - Chr2HexCode(secret[0x0100 + i])));
             }
 
             var key = new byte[Str2Hex(length)];
-            for (var i = 0; i < key.Length; i++)
+            for (var i = 0x00; i < key.Length; i++)
             {
-                key[i] = EncodeHex((byte)(Chr2HexCode(secret[0x510 + i]) - Chr2HexCode(secret[0x110 + i])));
+                key[i] = EncodeHex((byte)(Chr2HexCode(secret[0x0510 + i]) - Chr2HexCode(secret[0x0110 + i])));
             }
 
             return key;
@@ -35,7 +35,7 @@ namespace Ikura
         private static void UpdateKey(this byte[] secret, byte[] key, int index)
         {
             var p = (index & 0x3F) * 0x10;
-            for (var i = 0; i < key.Length; i++)
+            for (var i = 0x00; i < key.Length; i++)
             {
                 key[i] = EncodeHex((byte)(Chr2HexCode(key[i]) + Chr2HexCode(secret[p + i])));
             }
@@ -49,10 +49,10 @@ namespace Ikura
 
         private static int Str2Hex(byte[] str)
         {
-            var hex = 0;
-            for (var i = 0; i < str.Length; ++i)
+            var hex = 0x00;
+            for (var i = 0x00; i < str.Length; ++i)
             {
-                hex |= Chr2Hex(str[i]) << ((str.Length - i - 1) << 2);
+                hex |= Chr2Hex(str[i]) << ((str.Length - i - 0x01) << 0x02);
             }
 
             return hex;

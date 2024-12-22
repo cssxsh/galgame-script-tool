@@ -41,7 +41,7 @@ namespace Will
         public byte[] ToBytes()
         {
             var bytes = new byte[Commands.Sum(command => command.Length)];
-            var index = 0;
+            var index = 0x00;
             foreach (var command in Commands)
             {
                 command.CopyTo(bytes, index);

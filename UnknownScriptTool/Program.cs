@@ -75,8 +75,7 @@ namespace Unknown
                     {
                         case ".AQA":
                         {
-                            using var stream = File.OpenRead(path);
-                            using var reader = new BinaryReader(stream);
+                            using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
                             var scripts = reader.ReadUnknownScriptV2004();
 
                             foreach (var script in scripts)
@@ -100,8 +99,7 @@ namespace Unknown
                             break;
                         case ".DAT":
                         {
-                            using var stream = File.OpenRead(path);
-                            using var reader = new BinaryReader(stream);
+                            using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
                             var scripts = reader.ReadUnknownScriptV2001();
 
                             foreach (var script in scripts)
@@ -135,10 +133,9 @@ namespace Unknown
                     {
                         case ".AQA":
                         {
-                            using var stream = File.OpenRead(path);
-                            using var reader = new BinaryReader(stream);
+                            using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
                             var scripts = reader.ReadUnknownScriptV2004();
-                            stream.Position = 0x0000_0008;
+                            reader.BaseStream.Position = 0x0000_0008;
                             var key = reader.ReadUInt32();
 
                             foreach (var script in scripts)
@@ -163,8 +160,8 @@ namespace Unknown
 
                                 // ReSharper disable once InconsistentNaming
                                 var _O2I = new Dictionary<int, int>();
-                                var offset = 0;
-                                for (var i = 0; i < script.Commands.Length; i++)
+                                var offset = 0x0000_0000;
+                                for (var i = 0x00; i < script.Commands.Length; i++)
                                 {
                                     _O2I.Add(offset, i);
                                     offset += script.Commands[i].Length;
@@ -172,8 +169,8 @@ namespace Unknown
 
                                 // ReSharper disable once InconsistentNaming
                                 var _I2O = new Dictionary<int, int>();
-                                offset = 0;
-                                for (var i = 0; i < script.Commands.Length; i++)
+                                offset = 0x0000_0000;
+                                for (var i = 0x00; i < script.Commands.Length; i++)
                                 {
                                     _I2O.Add(i, offset);
                                     if (translated[i] != null)
@@ -186,7 +183,7 @@ namespace Unknown
 
                                 foreach (var command in script.Commands)
                                 {
-                                    if (command[0] != 0x0D && command[0] != 0x21) continue;
+                                    if (command[0x00] != 0x0D && command[0x00] != 0x21) continue;
                                     var o = BitConverter.ToInt32(command, 0x02);
                                     o = _I2O[_O2I[o]];
                                     BitConverter.GetBytes(o).CopyTo(command, 0x02);
@@ -195,15 +192,13 @@ namespace Unknown
 
                             var filename = path.PatchFileName(_encoding.WebName);
                             Console.WriteLine($"Write {filename}");
-                            using var s = File.Create(filename);
-                            using var w = new BinaryWriter(s);
-                            w.WriteUnknownScriptV2004(scripts, key);
+                            using var writer = new BinaryWriter(File.Create(filename), Encoding.ASCII, true);
+                            writer.WriteUnknownScriptV2004(scripts, key);
                         }
                             break;
                         case ".DAT":
                         {
-                            using var stream = File.OpenRead(path);
-                            using var reader = new BinaryReader(stream);
+                            using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
                             var scripts = reader.ReadUnknownScriptV2001();
 
                             foreach (var script in scripts)
@@ -268,9 +263,8 @@ namespace Unknown
 
                             var filename = path.PatchFileName(_encoding.WebName);
                             Console.WriteLine($"Write {filename}");
-                            using var s = File.Create(filename);
-                            using var w = new BinaryWriter(s);
-                            w.WriteUnknownScriptV2001(scripts);
+                            using var writer = new BinaryWriter(File.Create(filename), Encoding.ASCII, true);
+                            writer.WriteUnknownScriptV2001(scripts);
                         }
                             break;
                         default:
@@ -296,23 +290,19 @@ namespace Unknown
         {
             var count = reader.ReadInt32();
             var x04 = reader.ReadInt32();
-            if (x04 != 0x0C) throw new NotSupportedException("unsupported version.");
-            var data = reader.ReadInt32();
-            if (data != x04 + count * 0x0C) throw new NotSupportedException("unsupported version.");
+            if (x04 != 0x0000_000C) throw new FormatException($"00000004h: 0x{x04:X8}");
+            var x08 = reader.ReadInt32();
+            if (x08 != x04 + count * 0x0C) throw new FormatException($"00000008h: 0x{x08:X8}");
 
-            reader.BaseStream.Position = 0x0000_000C;
-            var index = reader.ReadBytes(count * 0x0C);
-            index.Rot();
-
-            using var s = new MemoryStream(index);
-            using var r = new BinaryReader(s);
             var scripts = new UnknownScriptV2001[count];
-            for (var i = 0; i < count; i++)
+            for (var i = 0x00; i < count; i++)
             {
-                s.Position = i * 0x0C;
-                var sort = r.ReadUInt32();
-                var size = r.ReadInt32();
-                var offset = r.ReadUInt32();
+                reader.BaseStream.Position = 0x0000_000C + i * 0x0C;
+                var index = reader.ReadBytes(0x0C);
+                index.Rot();
+                var sort = BitConverter.ToUInt32(index, 0x00);
+                var size = BitConverter.ToInt32(index, 0x04);
+                var offset = BitConverter.ToUInt32(index, 0x08);
 
                 reader.BaseStream.Position = offset;
                 var bytes = reader.ReadBytes(size);
@@ -332,26 +322,19 @@ namespace Unknown
             var mask = (ushort)(((0x0065 * key + 0x0309) & 0xFFFF) + 0x0001);
             var count = reader.ReadInt32();
 
-            reader.BaseStream.Position = 0x0000_0018;
-            var index = reader.ReadBytes(count * 0x90);
-            for (var i = 0; i < index.Length; i++)
-            {
-                index[i] ^= (byte)((i & 0x01) == 0x00 ? mask : mask >> 0x08);
-            }
-
-            var data = 0x0000_0018 + index.Length;
-            using var s = new MemoryStream(index);
-            using var r = new BinaryReader(s);
+            var data = 0x0000_0018 + count * 0x90;
             var scripts = new UnknownScriptV2004[count];
-            for (var i = 0; i < count; i++)
+            for (var i = 0x00; i < count; i++)
             {
-                s.Position = i * 0x90;
-                var name = Encoding.GetEncoding(932).GetString(r.ReadBytes(0x80).TrimEnd());
-                var size = r.ReadInt32();
-                var sort = r.ReadUInt32();
-                var offset = data + r.ReadUInt32();
+                reader.BaseStream.Position = 0x0000_0018 + i * 0x90;
+                var index = reader.ReadBytes(0x90);
+                index.Xor(mask);
+                var name = Encoding.GetEncoding(932).GetString(index.TrimEnd());
+                var size = BitConverter.ToInt32(index, 0x80);
+                var sort = BitConverter.ToUInt32(index, 0x84);
+                var offset = BitConverter.ToUInt32(index, 0x88);
 
-                reader.BaseStream.Position = offset;
+                reader.BaseStream.Position = data + offset;
                 var bytes = reader.ReadBytes(size);
                 scripts[i] = new UnknownScriptV2004(name, sort, bytes);
             }
@@ -362,31 +345,27 @@ namespace Unknown
         private static void WriteUnknownScriptV2001(this BinaryWriter writer, UnknownScriptV2001[] scripts)
         {
             writer.Write(scripts.Length);
-            var index = new byte[scripts.Length * 0x0C];
-            writer.Write(0x0C);
-            var offset = 0x0C + index.Length;
+            writer.Write(0x0000_000C);
+            var offset = 0x0000_000C + scripts.Length * 0x0C;
             writer.Write(offset);
 
-            using var s = new MemoryStream(index);
-            using var w = new BinaryWriter(s);
             for (var i = 0; i < scripts.Length; i++)
             {
                 var bytes = scripts[i].ToBytes();
                 bytes.Rot();
+                var index = new byte[0x0C];
+                BitConverter.GetBytes(scripts[i].Sort).CopyTo(index, 0x00);
+                BitConverter.GetBytes(bytes.Length).CopyTo(index, 0x04);
+                BitConverter.GetBytes(offset).CopyTo(index, 0x08);
+                bytes.Rot();
 
-                s.Position = i * 0x0C;
-                w.Write(scripts[i].Sort);
-                w.Write(bytes.Length);
-                w.Write(offset);
+                writer.BaseStream.Position = 0x0000_000C + i * 0x0C;
+                writer.Write(bytes);
 
                 writer.BaseStream.Position = offset;
                 writer.Write(bytes);
                 offset += bytes.Length;
             }
-
-            index.Rot();
-            writer.BaseStream.Position = 0x0000_000C;
-            writer.Write(index);
         }
 
         private static void WriteUnknownScriptV2004(this BinaryWriter writer, UnknownScriptV2004[] scripts, uint key)
@@ -396,33 +375,25 @@ namespace Unknown
             writer.Write(key);
             writer.Write(scripts.Length);
 
-            var index = new byte[scripts.Length * 0x90];
-            using var s = new MemoryStream(index);
-            using var w = new BinaryWriter(s);
-            var data = 0x0000_0018 + index.Length;
-            writer.BaseStream.Position = data;
+            var mask = (ushort)(((0x0065 * key + 0x0309) & 0xFFFF) + 0x0001);
+            var offset = 0x0000_0000;
             for (var i = 0; i < scripts.Length; i++)
             {
                 var bytes = scripts[i].ToBytes();
+                var index = new byte[0x90];
+                Encoding.GetEncoding(932).GetBytes(scripts[i].Name).CopyTo(index, 0x00);
+                BitConverter.GetBytes(bytes.Length).CopyTo(index, 0x80);
+                BitConverter.GetBytes(scripts[i].Sort).CopyTo(index, 0x84);
+                BitConverter.GetBytes(offset).CopyTo(index, 0x8C);
+                index.Xor(mask);
 
-                s.Position = i * 0x90;
-                w.Write(Encoding.GetEncoding(932).GetBytes(scripts[i].Name));
-                s.Position = i * 0x90 + 0x80;
-                w.Write(bytes.Length);
-                w.Write(scripts[i].Sort);
-                w.Write((uint)(writer.BaseStream.Position - data));
+                writer.BaseStream.Position = 0x0000_0018 + i * 0x90;
+                writer.Write(index);
 
+                writer.BaseStream.Position = 0x0000_0018 + scripts.Length * 0x90 + offset;
                 writer.Write(bytes);
+                offset += bytes.Length;
             }
-
-            var mask = (ushort)(((0x0065 * key + 0x0309) & 0xFFFF) + 0x0001);
-            for (var i = 0; i < index.Length; i++)
-            {
-                index[i] ^= (byte)((i & 0x01) == 0x00 ? mask : mask >> 0x08);
-            }
-
-            writer.BaseStream.Position = 0x0000_0018;
-            writer.Write(index);
         }
 
         private static string[] ExportV2001(byte[] command)

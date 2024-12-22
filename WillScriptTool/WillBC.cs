@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
 using ATool;
@@ -9,7 +10,7 @@ using ImageMagick;
 namespace Will
 {
     // ReSharper disable once InconsistentNaming
-    // ReSharper disable MemberCanBePrivate.Global
+    [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
     public readonly struct WillBC
     {
         public readonly short OffsetX;
@@ -22,7 +23,7 @@ namespace Will
 
         public readonly ushort BitsPerPixel;
 
-        private readonly uint _x1E;
+        public readonly uint X1E;
 
         public readonly int Colors;
 
@@ -45,14 +46,14 @@ namespace Will
             var data = reader.ReadUInt32();
             // 0x0E always 0x00000028
             var x0E = reader.ReadUInt32();
-            Debug.WriteLine($"BC:0E {x0E:X8}");
+            Debug.WriteLine($"BC:0000000Eh {x0E:X8}");
             // 0x12
             Width = reader.ReadUInt32();
             // 0x16
             Height = reader.ReadUInt32();
             // 0x1A always 0x0001
             var x1A = reader.ReadUInt16();
-            Debug.WriteLine($"BC:1A {x1A:X4}");
+            Debug.WriteLine($"BC:0000001Ah {x1A:X4}");
             // 0x1C
             BitsPerPixel = reader.ReadUInt16();
             var depth = BitsPerPixel switch
@@ -62,14 +63,14 @@ namespace Will
                 _ => throw new FormatException($"unsupported bbp: {BitsPerPixel:X4}"),
             };
             // 0x1E 0x00000003 or 0x00000000
-            _x1E = reader.ReadUInt32();
+            X1E = reader.ReadUInt32();
             // 0x22
             var sizeOfPixels = reader.ReadUInt32();
             Pixels = new byte[sizeOfPixels];
 
             stream.Position = 0x0000_0002E;
             Colors = reader.ReadInt32();
-            if (Colors < 0) throw new FormatException($"unsupported colors: {Colors:X8}");
+            if (Colors < 0x00) throw new FormatException($"unsupported colors: {Colors:X8}");
 
             stream.Position = data;
             var format = Encoding.ASCII.GetString(reader.ReadBytes(0x04));
@@ -139,12 +140,12 @@ namespace Will
                 dst += count;
             }
 
-            for (var y = 0; y < Height; y++)
+            for (var y = 0x00; y < Height; y++)
             {
-                for (var x = 1; x < Width; x++)
+                for (var x = 0x01; x < Width; x++)
                 {
                     var pos = y * stride + x * depth;
-                    for (var i = 0; i < depth; i++)
+                    for (var i = 0x00; i < depth; i++)
                     {
                         Pixels[pos + i] += Pixels[pos + i - depth];
                     }
@@ -186,7 +187,7 @@ namespace Will
                          ?? throw new FormatException($"get pixels<{format}> fail!");
             if (pixels.Length != Pixels.Length)
                 throw new FormatException($"unsupported pixels length: {pixels.Length}");
-            Array.Copy(pixels, 0, Pixels, 0, pixels.Length);
+            Array.Copy(pixels, 0x00, Pixels, 0x00, pixels.Length);
         }
 
         public byte[] ToBytes()
@@ -200,13 +201,13 @@ namespace Will
             };
             var stride = (ushort)(Width * depth);
             Array.Reverse(pixels);
-            for (var y = 0; y < Height; y++)
+            for (var y = 0x00; y < Height; y++)
             {
                 Array.Reverse(pixels, y * stride, stride);
-                for (var x = 1; x < Width; x++)
+                for (var x = 0x01; x < Width; x++)
                 {
                     var pos = y * stride + (Width - x) * depth;
-                    for (var i = 0; i < depth; i++)
+                    for (var i = 0x00; i < depth; i++)
                     {
                         pixels[pos + i] -= pixels[pos + i - depth];
                     }
@@ -218,9 +219,9 @@ namespace Will
             var stack = new Stack<CompressBlock>(pixels.Length);
             var result = Array.Empty<byte>();
             var dp = new Dictionary<int, int>();
-            var capacity = 0;
+            var capacity = 0x00;
             var next = false;
-            while (stack.Count > 0 || !next)
+            while (stack.Count > 0x00 || !next)
             {
                 if (length == 0x02)
                 {
@@ -272,7 +273,7 @@ namespace Will
                 }
                 else
                 {
-                    var block = Find(current.Count - 1);
+                    var block = Find(current.Count - 0x01);
                     if (block.Count == 0x00) continue;
                     stack.Push(block);
                 }
@@ -296,7 +297,7 @@ namespace Will
             writer.Write(Height);
             writer.Write((ushort)0x0001);
             writer.Write(BitsPerPixel);
-            writer.Write(_x1E);
+            writer.Write(X1E);
             writer.Write(Pixels.Length);
 
             stream.Position = 0x0000_0002E;
@@ -306,8 +307,7 @@ namespace Will
             writer.Write(Encoding.ASCII.GetBytes("TX04"));
             writer.Write(stride);
             writer.Write((ushort)Height);
-            writer.Write(pixels[0]);
-            writer.Write(pixels[1]);
+            writer.Write(pixels, 0x00, 0x02);
             writer.Write(result);
 
             return buffer;
@@ -323,7 +323,7 @@ namespace Will
                     for (var offset = Math.Min(0x08, dst); offset > 0x00; offset--)
                     {
                         var src = dst - offset;
-                        var x = 0;
+                        var x = 0x00;
                         while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
                         if (x < count) continue;
                         // if (x != count && stack.Peek().Flag == 0x00) continue;
@@ -334,7 +334,7 @@ namespace Will
                     for (var offset = Math.Min(stride + 0x08, dst); offset > stride - 0x08; offset--)
                     {
                         var src = dst - offset;
-                        var x = 0;
+                        var x = 0x00;
                         while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
                         if (x < count) continue;
                         // if (x != count && stack.Peek().Flag == 0x40) continue;
@@ -345,7 +345,7 @@ namespace Will
                     for (var offset = Math.Min(stride * 0x02 + 0x08, dst); offset > stride * 0x02 - 0x08; offset--)
                     {
                         var src = dst - offset;
-                        var x = 0;
+                        var x = 0x00;
                         while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
                         if (x < count) continue;
                         // if (x != count && stack.Peek().Flag == 0x80) continue;
@@ -356,7 +356,7 @@ namespace Will
                     for (var offset = Math.Min(0x20, dst); offset > 0x08; offset--)
                     {
                         var src = dst - offset;
-                        var x = 0;
+                        var x = 0x00;
                         while (dst + x < pixels.Length && pixels[src + x % offset] == pixels[dst + x]) x++;
                         if (x < count) continue;
                         // if (x != count && stack.Peek().Flag == 0xC0) continue;
@@ -444,7 +444,7 @@ namespace Will
                             var mask = 0xE0;
                             mask |= block.Count - 0x01;
                             temp[p++] = (byte)mask;
-                            for (var x = 0; x < block.Count; x++) temp[p++] = pixels[block.Offset + x];
+                            for (var x = 0x00; x < block.Count; x++) temp[p++] = pixels[block.Offset + x];
                         }
                             break;
                         default:
@@ -473,11 +473,11 @@ namespace Will
 
             public int Size => Flag switch
             {
-                0x00 => Count < 0x09 ? 1 : 2,
-                0x40 => Count < 0x05 ? 1 : 2,
-                0x80 => Count < 0x05 ? 1 : 2,
-                0xC0 => 3,
-                _ => 1 + Count
+                0x00 => Count < 0x09 ? 0x01 : 0x02,
+                0x40 => Count < 0x05 ? 0x01 : 0x02,
+                0x80 => Count < 0x05 ? 0x01 : 0x02,
+                0xC0 => 0x03,
+                _ => 0x01 + Count
             };
         }
     }

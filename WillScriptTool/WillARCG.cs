@@ -27,7 +27,7 @@ namespace Will
             var countOfDirectory = reader.ReadUInt16();
             var files = new List<KeyValuePair<string, byte[]>>(reader.ReadInt32());
 
-            for (var j = 0; j < countOfDirectory; j++)
+            for (var j = 0x00; j < countOfDirectory; j++)
             {
                 stream.Position = offsetOfIndex;
                 var size = reader.ReadByte();
@@ -36,7 +36,7 @@ namespace Will
                 var countOfFile = reader.ReadInt32();
                 offsetOfIndex += size + 0x08u;
 
-                for (var i = 0; i < countOfFile; i++)
+                for (var i = 0x00; i < countOfFile; i++)
                 {
                     stream.Position = offsetOfDirectory;
                     size = reader.ReadByte();
@@ -60,20 +60,20 @@ namespace Will
             var offsetOfFile = size;
             size += Files.Sum(file => file.Value.Length);
             var offsetOfIndex = size;
-            var freq = new Dictionary<string, int> { [""] = 0 };
+            var freq = new Dictionary<string, int> { [""] = 0x00 };
             size += 0x10;
             foreach (var file in Files)
             {
                 var directory = Path.GetDirectoryName(file.Key) ?? "";
                 if (freq.TryGetValue(directory, out var count))
                 {
-                    freq[directory] = count + 1;
+                    freq[directory] = count + 0x01;
                 }
                 else
                 {
                     size += (encoding.GetByteCount(directory) + 0x05) & ~0x03;
                     size += 0x08;
-                    freq[directory] = 1;
+                    freq[directory] = 0x01;
                 }
             }
 
@@ -111,7 +111,7 @@ namespace Will
                 writer.Write(item.Value);
                 offsetOfIndex += capacity + 0x08;
 
-                for (var i = 0; i < item.Value; i++)
+                for (var i = 0x00; i < item.Value; i++)
                 {
                     var file = Files[index++];
                     stream.Position = offsetOfDirectory;

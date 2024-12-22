@@ -60,8 +60,7 @@ namespace Mutation
                     _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
-                    using var stream = File.OpenRead(path);
-                    using var reader = new BinaryReader(stream);
+                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
                     var scripts = reader.ReadMutationScripts();
 
                     Directory.CreateDirectory($"{path}~");
@@ -100,8 +99,7 @@ namespace Mutation
                     _encoding ??= Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
-                    using var stream = File.OpenRead(path);
-                    using var reader = new BinaryReader(stream);
+                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
                     var scripts = reader.ReadMutationScripts();
 
                     for (var i = 0; i < scripts.Length; i++)
@@ -126,9 +124,8 @@ namespace Mutation
 
                     var filename = path.PatchFileName(_encoding.WebName);
                     Console.WriteLine($"Write {filename}");
-                    using var s = File.Create(filename);
-                    using var w = new BinaryWriter(s);
-                    w.WriteMutationScripts(scripts);
+                    using var writer = new BinaryWriter(File.Create(filename), Encoding.ASCII, true);
+                    writer.WriteMutationScripts(scripts);
                 }
                     break;
                 default:
@@ -174,7 +171,7 @@ namespace Mutation
             writer.Write((ushort)scripts.Length);
 
             var offset = 0x0000_0006 + scripts.Length * 0x18;
-            for (var i = 0; i < scripts.Length; i++)
+            for (var i = 0x00; i < scripts.Length; i++)
             {
                 var text = scripts[i].Value;
                 if (_encoding.CodePage == 936)

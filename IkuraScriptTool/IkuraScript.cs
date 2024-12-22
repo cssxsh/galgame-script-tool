@@ -36,7 +36,7 @@ namespace Ikura
                 var temp = new byte[0x10];
                 foreach (var secret in GetKnownSecrets())
                 {
-                    Array.Copy(bytes, 0, temp, 0, temp.Length);
+                    Array.Copy(bytes, 0x00, temp, 0x00, temp.Length);
                     IkuraSecret.Handle(temp, secret);
                     switch (BitConverter.ToUInt16(temp, 0x04))
                     {
@@ -68,20 +68,20 @@ namespace Ikura
             switch (Version)
             {
                 case 0x9795:
-                    for (var i = 8; i < bytes.Length; i++) bytes[i] = (byte)(bytes[i] >> 2 | bytes[i] << 6);
+                    for (var i = 0x08; i < bytes.Length; i++) bytes[i] = (byte)(bytes[i] >> 0x02 | bytes[i] << 0x06);
                     break;
                 case 0xD197:
-                    for (var i = 8; i < bytes.Length; i++) bytes[i] = (byte)~bytes[i];
+                    for (var i = 0x08; i < bytes.Length; i++) bytes[i] = (byte)~bytes[i];
                     break;
                 case 0xCE89:
-                    for (var i = 8; i < bytes.Length; i++) bytes[i] = (byte)(bytes[i] ^ Key);
+                    for (var i = 0x08; i < bytes.Length; i++) bytes[i] = (byte)(bytes[i] ^ Key);
                     break;
             }
 
-            stream.Position = 8;
-            Labels = new int[(Offset - 8) / 4];
+            stream.Position = 0x0000_0008;
+            Labels = new int[(Offset - 0x08) / 0x04];
             var table = new int[Labels.Length];
-            for (var i = 0; i < table.Length; i++)
+            for (var i = 0x00; i < table.Length; i++)
             {
                 table[i] = reader.ReadInt32();
             }
@@ -91,7 +91,7 @@ namespace Ikura
             stream.Position = Offset;
             while (stream.Position < bytes.Length)
             {
-                for (var j = 0; j < table.Length; j++)
+                for (var j = 0x00; j < table.Length; j++)
                 {
                     if (table[j] != stream.Position - Offset) continue;
                     Labels[j] = commands.Count;
@@ -101,12 +101,12 @@ namespace Ikura
                 var size = (int)reader.ReadByte();
                 if (size > 0x7F)
                 {
-                    size = ((size & 0x7F) << 8) | reader.ReadByte();
-                    size -= 3;
+                    size = ((size & 0x7F) << 0x08) | reader.ReadByte();
+                    size -= 0x03;
                 }
                 else
                 {
-                    size -= 2;
+                    size -= 0x02;
                 }
 
                 commands.Add(new KeyValuePair<Instruction, byte[]>(instruction, reader.ReadBytes(size)));
@@ -121,7 +121,7 @@ namespace Ikura
             var size = Offset;
             foreach (var command in Commands)
             {
-                size += (uint)(2 + command.Value.Length > 0x7F ? 3 : 2);
+                size += (uint)(0x02 + command.Value.Length > 0x7F ? 0x03 : 0x02);
                 size += (uint)command.Value.Length;
             }
 
@@ -135,25 +135,25 @@ namespace Ikura
                 writer.Write(Unused);
 
                 var position = Offset;
-                for (var i = 0; i < Commands.Length; i++)
+                for (var i = 0x00; i < Commands.Length; i++)
                 {
-                    for (var j = 0; j < Labels.Length; j++)
+                    for (var j = 0x00; j < Labels.Length; j++)
                     {
                         if (Labels[j] != i) continue;
-                        stream.Position = 8 + j * 4;
+                        stream.Position = 0x08 + j * 0x04;
                         writer.Write(position - Offset);
                     }
 
                     stream.Position = position;
                     writer.Write((byte)Commands[i].Key);
-                    if (2 + Commands[i].Value.Length > 0x7F)
+                    if (0x02 + Commands[i].Value.Length > 0x7F)
                     {
-                        writer.Write((byte)((3 + Commands[i].Value.Length) >> 8 | 0x80));
-                        writer.Write((byte)((3 + Commands[i].Value.Length) & 0xFF));
+                        writer.Write((byte)((0x03 + Commands[i].Value.Length) >> 0x08 | 0x80));
+                        writer.Write((byte)((0x03 + Commands[i].Value.Length) & 0xFF));
                     }
                     else
                     {
-                        writer.Write((byte)(2 + Commands[i].Value.Length));
+                        writer.Write((byte)(0x02 + Commands[i].Value.Length));
                     }
 
                     writer.Write(Commands[i].Value);
@@ -164,13 +164,13 @@ namespace Ikura
             switch (Version)
             {
                 case 0x9795:
-                    for (var i = 8; i < bytes.Length; i++) bytes[i] = (byte)(bytes[i] << 2 | bytes[i] >> 6);
+                    for (var i = 0x08; i < bytes.Length; i++) bytes[i] = (byte)(bytes[i] << 0x02 | bytes[i] >> 0x06);
                     break;
                 case 0xD197:
-                    for (var i = 8; i < bytes.Length; i++) bytes[i] = (byte)~bytes[i];
+                    for (var i = 0x08; i < bytes.Length; i++) bytes[i] = (byte)~bytes[i];
                     break;
                 case 0xCE89:
-                    for (var i = 8; i < bytes.Length; i++) bytes[i] = (byte)(bytes[i] ^ Key);
+                    for (var i = 0x08; i < bytes.Length; i++) bytes[i] = (byte)(bytes[i] ^ Key);
                     break;
             }
 
@@ -189,33 +189,32 @@ namespace Ikura
             var offset = index;
             while (offset < data.Length)
             {
-                switch (data[offset])
+                switch (data[offset++])
                 {
                     case 0x01:
-                        offset += 1 + 4;
+                        offset += 0x04;
                         break;
                     case 0x04:
-                        offset += 1 + 1;
+                        offset += 0x01;
                         break;
                     case 0x08:
-                        offset += 1 + 4;
+                        offset += 0x04;
                         break;
                     case 0x09:
-                        offset += 1 + 1;
+                        offset += 0x01;
                         break;
                     case 0x0A:
-                        offset += 1 + 4;
+                        offset += 0x04;
                         break;
                     case 0x0B:
                     case 0x0C:
                     case 0x10:
-                        offset += 1 + 2;
+                        offset += 0x02;
                         break;
                     case 0x11:
-                        offset += 1 + 4;
+                        offset += 0x04;
                         break;
                     case 0xFF:
-                        offset += 1;
                         buffer.Clear();
                         while (offset < data.Length)
                         {
@@ -229,27 +228,27 @@ namespace Ikura
                             {
                                 case 0x5C:
                                     buffer.Add(Kana[0xB8]);
-                                    offset += 1;
-                                    if (data[offset] != 0x00) offset += 1;
-                                    buffer.Add(Kana[data[offset - 1] * 2 + 1]);
-                                    offset += 1;
+                                    offset += 0x01;
+                                    if (data[offset] != 0x00) offset += 0x01;
+                                    buffer.Add(Kana[data[offset - 0x01] * 0x02 + 0x01]);
+                                    offset += 0x01;
                                     continue;
                                 case 0x7F:
-                                    buffer.Add(data[offset + 1]);
-                                    offset += 2;
+                                    buffer.Add(data[offset + 0x01]);
+                                    offset += 0x02;
                                     continue;
                                 default:
                                     if (data[offset] > 0x7F)
                                     {
                                         buffer.Add(data[offset]);
-                                        buffer.Add(data[offset + 1]);
-                                        offset += 2;
+                                        buffer.Add(data[offset + 0x01]);
+                                        offset += 0x02;
                                     }
                                     else
                                     {
-                                        buffer.Add(Kana[data[offset] * 2]);
-                                        buffer.Add(Kana[data[offset] * 2 + 1]);
-                                        offset += 1;
+                                        buffer.Add(Kana[data[offset] * 0x02]);
+                                        buffer.Add(Kana[data[offset] * 0x02 + 0x01]);
+                                        offset += 0x01;
                                     }
 
                                     continue;
@@ -257,9 +256,6 @@ namespace Ikura
                         }
 
                         lines.Add(buffer.ToArray());
-                        break;
-                    default:
-                        offset += 1;
                         break;
                 }
             }
@@ -271,39 +267,37 @@ namespace Ikura
         {
             var offset = index;
             var buffer = new List<byte>();
-            var k = 0;
+            var k = 0x00;
             while (offset < data.Length)
             {
                 var pos = offset;
 
-                switch (data[offset])
+                switch (data[offset++])
                 {
                     case 0x01:
-                        offset += 1 + 4;
+                        offset += 0x04;
                         break;
                     case 0x04:
-                        offset += 1 + 1;
+                        offset += 0x01;
                         break;
                     case 0x08:
-                        offset += 1 + 4;
+                        offset += 0x04;
                         break;
                     case 0x09:
-                        offset += 1 + 1;
+                        offset += 0x01;
                         break;
                     case 0x0A:
-                        offset += 1 + 4;
+                        offset += 0x04;
                         break;
                     case 0x0B:
                     case 0x0C:
                     case 0x10:
-                        offset += 1 + 2;
+                        offset += 0x02;
                         break;
                     case 0x11:
-                        offset += 1 + 4;
+                        offset += 0x04;
                         break;
                     case 0xFF:
-                        offset += 1;
-
                         while (offset < data.Length)
                         {
                             if (data[offset] == 0x00)
@@ -316,17 +310,17 @@ namespace Ikura
                             {
                                 case 0x5C:
                                 case 0x7F:
-                                    offset += 2;
+                                    offset += 0x02;
                                     break;
                                 default:
-                                    offset += data[offset] > 0x7F ? 2 : 1;
+                                    offset += data[offset] > 0x7F ? 0x02 : 0x01;
                                     break;
                             }
                         }
 
                         buffer.Add(0xFF);
 
-                        for (var i = 0; i < messages[k].Length; i++)
+                        for (var i = 0x00; i < messages[k].Length; i++)
                         {
                             if (messages[k][i] <= 0x7F)
                             {
@@ -335,15 +329,15 @@ namespace Ikura
                                 continue;
                             }
 
-                            var t = 0;
-                            for (var j = 2; j < 0x7F * 2; j += 2)
+                            var t = 0x00;
+                            for (var j = 0x02; j < 0x7F * 0x02; j += 0x02)
                             {
-                                if (messages[k][i] != Kana[j] || messages[k][i + 1] != Kana[j + 1]) continue;
-                                t = j / 2;
+                                if (messages[k][i] != Kana[j] || messages[k][i + 0x01] != Kana[j + 0x01]) continue;
+                                t = j / 0x02;
                                 break;
                             }
 
-                            if (t != 0)
+                            if (t != 0x00)
                             {
                                 buffer.Add((byte)t);
                                 if (t == 0x5C) buffer.Add(0x00);
@@ -351,7 +345,7 @@ namespace Ikura
                             else
                             {
                                 buffer.Add(messages[k][i]);
-                                buffer.Add(messages[k][i + 1]);
+                                buffer.Add(messages[k][i + 0x01]);
                             }
 
                             i++;
@@ -361,9 +355,6 @@ namespace Ikura
 
                         k++;
                         continue;
-                    default:
-                        offset += 1;
-                        break;
                 }
 
                 for (var i = pos; i < offset; i++)

@@ -66,8 +66,7 @@ namespace Ikura
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
                     Environment.SetEnvironmentVariable("GAME_PATH", Path.GetDirectoryName(path));
-                    using var stream = File.OpenRead(path);
-                    using var reader = new BinaryReader(stream);
+                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
                     var scripts = reader.ReadIkuraScripts();
 
                     Directory.CreateDirectory($"{path}~");
@@ -95,8 +94,7 @@ namespace Ikura
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
                     Environment.SetEnvironmentVariable("GAME_PATH", Path.GetDirectoryName(path));
-                    using var stream = File.OpenRead(path);
-                    using var reader = new BinaryReader(stream);
+                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
                     var scripts = reader.ReadIkuraScripts();
 
                     foreach (var script in scripts)
@@ -130,17 +128,15 @@ namespace Ikura
 
                     var filename = path.PatchFileName(_encoding.WebName);
                     Console.WriteLine($"Write {filename}");
-                    using var s = File.Create(filename);
-                    using var w = new BinaryWriter(s);
-                    w.WriteIkuraScripts(scripts);
+                    using var writer = new BinaryWriter(File.Create(filename), Encoding.ASCII, true);
+                    writer.WriteIkuraScripts(scripts);
                 }
                     break;
                 case "-E":
                     _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
-                    using var stream = File.OpenRead(path);
-                    using var reader = new BinaryReader(stream);
+                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
                     var scripts = reader.ReadRomanceScripts();
 
                     Directory.CreateDirectory($"{path}~");
@@ -167,8 +163,7 @@ namespace Ikura
                     _encoding ??= Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
-                    using var stream = File.OpenRead(path);
-                    using var reader = new BinaryReader(stream);
+                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
                     var scripts = reader.ReadRomanceScripts();
 
                     foreach (var script in scripts)
@@ -200,9 +195,8 @@ namespace Ikura
 
                     var filename = path.PatchFileName(_encoding.WebName);
                     Console.WriteLine($"Write {filename}");
-                    using var s = File.Create(filename);
-                    using var w = new BinaryWriter(s);
-                    w.WriteRomanceScripts(scripts);
+                    using var writer = new BinaryWriter(File.Create(filename), Encoding.ASCII, true);
+                    writer.WriteRomanceScripts(scripts);
                 }
                     break;
                 default:
@@ -233,7 +227,7 @@ namespace Ikura
 
             var scripts = new IkuraScript[count];
 
-            for (var i = 0; i < count; i++)
+            for (var i = 0x00; i < count; i++)
             {
                 reader.BaseStream.Position = offset + i * 0x14;
                 var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x0C).TrimEnd());
@@ -261,7 +255,7 @@ namespace Ikura
 
             var scripts = new List<RomanceScript>(count);
 
-            for (var i = 0; i < count; i++)
+            for (var i = 0x00; i < count; i++)
             {
                 reader.BaseStream.Position = offset + i * 0x14;
                 var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x0C).TrimEnd());
@@ -292,7 +286,7 @@ namespace Ikura
             writer.Write(buffer);
             writer.Write(0x0000_0020);
 
-            for (var i = 0; i < scripts.Length; i++)
+            for (var i = 0x00; i < scripts.Length; i++)
             {
                 var bytes = scripts[i].ToBytes();
 
@@ -325,7 +319,7 @@ namespace Ikura
             writer.Write(buffer);
             writer.Write(0x0000_0020);
 
-            for (var i = 0; i < scripts.Length; i++)
+            for (var i = 0x00; i < scripts.Length; i++)
             {
                 var bytes = scripts[i].ToBytes();
 
@@ -350,23 +344,23 @@ namespace Ikura
             switch (instruction)
             {
                 case IkuraScript.Instruction.CSET:
-                    return new[] { _encoding.GetString(args, 18, args.Length - 18) };
+                    return new[] { _encoding.GetString(args, 0x12, args.Length - 0x12) };
                 case IkuraScript.Instruction.CNS:
-                    return new[] { _encoding.GetString(args, 2, args.Length - 2) };
+                    return new[] { _encoding.GetString(args, 0x02, args.Length - 0x02) };
                 case IkuraScript.Instruction.PM:
                 case IkuraScript.Instruction.PMP:
-                    return IkuraScript.Decode(args, 1)
+                    return IkuraScript.Decode(args, 0x01)
                         .Select(line => _encoding.GetString(line))
                         .ToArray();
                 case IkuraScript.Instruction.MSGBOX:
-                    return new[] { _encoding.GetString(args, 4, args.Length - 6) };
+                    return new[] { _encoding.GetString(args, 0x04, args.Length - 0x06) };
                 case IkuraScript.Instruction.MPM:
-                    if (args[1] == 0) return Array.Empty<string>();
-                    return IkuraScript.Decode(args, 2)
+                    if (args[1] == 0x00) return Array.Empty<string>();
+                    return IkuraScript.Decode(args, 0x02)
                         .Select(line => _encoding.GetString(line))
                         .ToArray();
                 case IkuraScript.Instruction.SETGAMEINFO:
-                    return new[] { _encoding.GetString(args, 0, args.Length - 1) };
+                    return new[] { _encoding.GetString(args, 0x00, args.Length - 0x01) };
                 default:
                     return Array.Empty<string>();
             }

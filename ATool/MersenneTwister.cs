@@ -23,9 +23,9 @@
         {
             for (_mti = 0; _mti < _mt.Length; ++_mti)
             {
-                uint upper = seed & 0xffff0000;
+                var upper = seed & 0xFFFF_0000;
                 seed = 69069 * seed + 1;
-                _mt[_mti] = upper | (seed & 0xffff0000) >> 16;
+                _mt[_mti] = upper | (seed & 0xFFFF_0000) >> 16;
                 seed = 69069 * seed + 1;
             }
         }

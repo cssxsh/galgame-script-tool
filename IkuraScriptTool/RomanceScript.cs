@@ -43,7 +43,7 @@ namespace Ikura
             Labels = new int[x0C / 0x04];
             var table = new uint[Labels.Length];
             stream.Position = x08;
-            for (var i = 0; i < Labels.Length; i++) table[i] = reader.ReadUInt32();
+            for (var i = 0x00; i < Labels.Length; i++) table[i] = reader.ReadUInt32();
 
             var commands = new List<byte[]>();
             stream.Position = offset;
@@ -51,7 +51,7 @@ namespace Ikura
             {
                 var position = stream.Position;
 
-                for (var j = 0; j < table.Length; j++)
+                for (var j = 0x00; j < table.Length; j++)
                 {
                     if (table[j] != stream.Position - offset) continue;
                     Labels[j] = commands.Count;
@@ -105,7 +105,8 @@ namespace Ikura
                         if (end != 0x00) throw new FormatException($"{instruction:X2} at {Name}:{position:X8}");
                         if (!Debugger.IsAttached) break;
                         var text = Encoding.GetEncoding(932).GetString(raw.TrimEnd());
-                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} {a:X8}, {b:X8}, {c:X8}, '{text}', {end:X2}");
+                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} {a:X8}, {b:X8}, {c:X8}, '{text}', " +
+                                        $"{end:X2}");
                     }
                         break;
                     case 0x12:
@@ -214,7 +215,8 @@ namespace Ikura
                         var raw = reader.ReadBytes(size > 0x7F ? size - 0x13 : size - 0x12);
                         if (!Debugger.IsAttached) break;
                         var text = Encoding.GetEncoding(932).GetString(raw.TrimEnd());
-                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} {a:X8}, {b:X8}, {c:X8}, {d:X8} '{text}'");
+                        Debug.WriteLine($"{Name}:{position:X8}>{instruction:X2} {a:X8}, {b:X8}, {c:X8}, {d:X8}, " +
+                                        $"'{text}'");
                     }
                         break;
                     // TITLE
@@ -278,11 +280,11 @@ namespace Ikura
             writer.Write(0x0000_0000);
             writer.Write(bytes.Length - offset);
             stream.Position = offset;
-            for (var i = 0; i < Commands.Length; i++)
+            for (var i = 0x00; i < Commands.Length; i++)
             {
                 var position = (uint)stream.Position;
 
-                for (var j = 0; j < Labels.Length; j++)
+                for (var j = 0x00; j < Labels.Length; j++)
                 {
                     if (Labels[j] != i) continue;
                     stream.Position = 0x0000_001C + j * 0x04;

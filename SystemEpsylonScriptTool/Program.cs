@@ -53,17 +53,14 @@ namespace SystemEpsylon
                     break;
             }
 
-            var scripts = Array.Empty<SystemEpsylonScript>();
             switch (mode)
             {
                 case "-e":
                     _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
-                    using (var stream = File.OpenRead(path))
-                    using (var reader = new BinaryReader(stream))
-                    {
-                        scripts = reader.ReadSystemEpsylonScripts();
-                    }
+                {
+                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                    var scripts = reader.ReadSystemEpsylonScripts();
 
                     Directory.CreateDirectory($"{path}~");
 
@@ -82,16 +79,14 @@ namespace SystemEpsylon
                             writer.WriteLine();
                         }
                     }
-
+                }
                     break;
                 case "-i":
                     _encoding ??= Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
-                    using (var stream = File.OpenRead(path))
-                    using (var reader = new BinaryReader(stream))
-                    {
-                        scripts = reader.ReadSystemEpsylonScripts();
-                    }
+                {
+                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                    var scripts = reader.ReadSystemEpsylonScripts();
 
                     foreach (var script in scripts)
                     {
@@ -122,15 +117,11 @@ namespace SystemEpsylon
 
                     var filename = path.PatchFileName(_encoding.WebName);
                     Console.WriteLine($"Write {filename}");
-                    using (var stream = File.Create(filename))
-                    using (var writer = new BinaryWriter(stream))
-                    {
-                        writer.WriteSystemEpsylonScripts(scripts);
-                    }
-
+                    using var writer = new BinaryWriter(File.Create(filename), Encoding.ASCII, true);
+                    writer.WriteSystemEpsylonScripts(scripts);
+                }
                     break;
                 default:
-                    Array.Resize(ref scripts, 0);
                     Console.WriteLine("Usage:");
                     Console.WriteLine("  Export text : SystemEpsylonTool -e [script.dat] [encoding]");
                     Console.WriteLine("  Import text : SystemEpsylonTool -i [script.dat] [encoding]");
@@ -153,7 +144,7 @@ namespace SystemEpsylon
 
             for (var i = 0x00; i < count; i++)
             {
-                reader.BaseStream.Position = 0x10 + i * 0x30;
+                reader.BaseStream.Position = 0x0000_0010 + i * 0x30;
                 var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x20).TrimEnd());
                 var offset = reader.ReadUInt32();
                 var flags = reader.ReadUInt32();
@@ -177,11 +168,11 @@ namespace SystemEpsylon
             var buffer = new byte[0x20];
             var offset = (uint)(0x10 + scripts.Length * 0x30);
 
-            for (var i = 0; i < scripts.Length; i++)
+            for (var i = 0x00; i < scripts.Length; i++)
             {
                 var bytes = scripts[i].ToBytes();
 
-                writer.BaseStream.Position = 0x10 + i * 0x30;
+                writer.BaseStream.Position = 0x0000_0010 + i * 0x30;
                 Array.Clear(buffer, 0, buffer.Length);
                 Encoding.GetEncoding(932).GetBytes(scripts[i].Name).CopyTo(buffer, 0);
                 writer.Write(buffer);
@@ -201,17 +192,17 @@ namespace SystemEpsylon
         private static string Export(byte[] command)
         {
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
-            switch (command[0])
+            switch (command[0x00])
             {
                 case 0x00:
-                    var count = 0;
-                    for (var i = command[1]; i < command.Length; i++)
+                    var count = 0x00;
+                    for (var i = command[0x01]; i < command.Length; i++)
                     {
                         if (command[i] == 0x00) break;
                         count++;
                     }
 
-                    return _encoding.GetString(command, command[1], count);
+                    return _encoding.GetString(command, command[0x01], count);
                 default:
                     return null;
             }
@@ -221,22 +212,22 @@ namespace SystemEpsylon
         {
             if (_encoding.CodePage == 936) text = text.ReplaceGbkUnsupported();
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
-            switch (command[0])
+            switch (command[0x00])
             {
                 case 0x00:
                     var bytes = _encoding.GetBytes(text);
-                    if (bytes.Length + 1 > command[3])
+                    if (bytes.Length + 0x01 > command[0x03])
                     {
-                        var size = (byte)((bytes.Length + 4) & ~0x03u);
-                        command[3] = size;
-                        Array.Resize(ref command, command[1] + size);
+                        var size = (byte)((bytes.Length + 0x04) & ~0x03u);
+                        command[0x03] = size;
+                        Array.Resize(ref command, command[0x01] + size);
                     }
 
-                    Array.Clear(command, command[1], command[3]);
-                    bytes.CopyTo(command, command[1]);
+                    Array.Clear(command, command[0x01], command[0x03]);
+                    bytes.CopyTo(command, command[0x01]);
                     break;
                 default:
-                    throw new NotSupportedException($"Import {command[0]:X2} is unsupported");
+                    throw new NotSupportedException($"Import {command[0x00]:X2} is unsupported");
             }
 
             return command;
@@ -245,7 +236,7 @@ namespace SystemEpsylon
         private static bool HasText(this SystemEpsylonScript script)
         {
             return script.Commands
-                .Any(command => command.Length > 1 && command[0] == 0x00);
+                .Any(command => command.Length > 0x01 && command[0x00] == 0x00);
         }
     }
 }

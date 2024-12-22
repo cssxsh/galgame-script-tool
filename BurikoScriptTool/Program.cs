@@ -28,7 +28,9 @@ namespace BGI
                             if (archives.Length == 0) throw new FileNotFoundException(path);
                             foreach (var file in archives)
                             {
-                                if (file.Contains("_")) continue;
+                                var name = Path.GetFileName(file);
+                                if (name.Contains("_")) continue;
+                                if (!name.StartsWith("data01") && !name.StartsWith("sys")) continue;
                                 Main(mode, file);
                             }
 
@@ -63,17 +65,14 @@ namespace BGI
                     break;
             }
 
-            var files = Array.Empty<KeyValuePair<string, byte[]>>();
             switch (mode)
             {
                 case "-e":
                     _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
-                    using (var stream = File.OpenRead(path))
-                    using (var reader = new BinaryReader(stream))
-                    {
-                        files = reader.ReadBurikoArchive();
-                    }
+                {
+                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                    var files = reader.ReadBurikoArchive();
 
                     Directory.CreateDirectory($"{path}~");
 
@@ -92,16 +91,14 @@ namespace BGI
                             writer.WriteLine();
                         }
                     }
-
+                }
                     break;
                 case "-i":
                     _encoding ??= Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
-                    using (var stream = File.OpenRead(path))
-                    using (var reader = new BinaryReader(stream))
-                    {
-                        files = reader.ReadBurikoArchive();
-                    }
+                {
+                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                    var files = reader.ReadBurikoArchive();
 
                     Directory.CreateDirectory(_encoding.WebName);
 
@@ -125,7 +122,8 @@ namespace BGI
                         }
 
                         using var stream = File.Create($"{_encoding.WebName}/{patch.Name}");
-                        stream.Write(file.Value, 0, (int)patch.Offset);
+                        using var writer = new BinaryWriter(stream);
+                        writer.Write(file.Value, 0x00, (int)patch.Offset);
                         var position = patch.Offset;
 
                         if (file.Key.EndsWith("._bp"))
@@ -133,19 +131,19 @@ namespace BGI
                             foreach (var item in patch.Data)
                             {
                                 stream.Position = position;
-                                stream.Write(item.Value, 0, item.Value.Length);
-                                stream.WriteByte(0x00);
+                                writer.Write(item.Value);
+                                writer.Write((byte)0x00);
 
-                                stream.Position = item.Key + 1;
-                                stream.Write(BitConverter.GetBytes((ushort)(position - item.Key)), 0, 2);
+                                stream.Position = item.Key + 0x01;
+                                writer.Write((ushort)(position - item.Key));
 
-                                position += (uint)(item.Value.Length + 1);
+                                position += (uint)(item.Value.Length + 0x01);
                             }
 
                             var limit = (position + 0x0F) & ~0x0Fu;
                             var empty = new byte[limit - position];
                             stream.Position = position;
-                            stream.Write(empty, 0, empty.Length);
+                            writer.Write(empty);
                         }
                         else
                         {
@@ -158,24 +156,23 @@ namespace BGI
                                 if (!dictionary.TryGetValue(hash, out var value))
                                 {
                                     stream.Position = position;
-                                    stream.Write(item.Value, 0, item.Value.Length);
-                                    stream.WriteByte(0x00);
+                                    writer.Write(item.Value);
+                                    writer.Write((byte)0x00);
 
                                     value = position - command;
                                     dictionary.Add(hash, value);
 
-                                    position += (uint)(item.Value.Length + 1);
+                                    position += (uint)(item.Value.Length + 0x01);
                                 }
 
-                                stream.Position = item.Key + 4;
-                                stream.Write(BitConverter.GetBytes(value), 0, 4);
+                                stream.Position = item.Key + 0x04;
+                                writer.Write(value);
                             }
                         }
                     }
-
+                }
                     break;
                 default:
-                    Array.Resize(ref files, 0);
                     Console.WriteLine("Usage:");
                     Console.WriteLine("  Export text : BurikoScriptTool -e [*.arc] [encoding]");
                     Console.WriteLine("  Import text : BurikoScriptTool -i [*.arc] [encoding]");
@@ -206,11 +203,11 @@ namespace BGI
             var count = reader.ReadUInt32();
             var patches = new KeyValuePair<string, byte[]>[count];
 
-            for (var i = 0; i < count; i++)
+            for (var i = 0x00; i < count; i++)
             {
                 reader.BaseStream.Position = 0x0000_0010 + i * 0x80;
                 var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x60).TrimEnd());
-                var offset = 0x10 + count * 0x80 + reader.ReadUInt32();
+                var offset = 0x0000_0010 + count * 0x80 + reader.ReadUInt32();
                 var size = reader.ReadInt32();
                 reader.BaseStream.Position = offset;
                 var bytes = reader.ReadBytes(size);
@@ -243,7 +240,7 @@ namespace BGI
             }
 
             stream.Position = 0x0000_0000;
-            var magic = reader.ReadUInt32() << 16;
+            var magic = reader.ReadUInt32() << 0x10;
             stream.Position = 0x0000_0010;
             var key = reader.ReadUInt32();
             var output = new byte[reader.ReadUInt32()];
@@ -253,17 +250,17 @@ namespace BGI
             var codes = new HuffmanCode[0x0200];
             var nodes = new HuffmanNode[0x03FF];
 
-            var index = 0;
-            for (var i = 0; i < 0x200; i++)
+            var index = 0x0000;
+            for (var i = 0x0000; i < 0x0200; i++)
             {
                 var depth = reader.ReadByte();
                 depth = (byte)(depth - UpdateKey());
-                if (depth == 0) continue;
+                if (depth == 0x00) continue;
                 codes[index] = new HuffmanCode { Depth = depth, Code = (ushort)i };
                 index++;
             }
 
-            Array.Sort(codes, 0, index);
+            Array.Sort(codes, 0x0000, index);
             BuildHuffmanTree(index);
             HuffmanDecompress(decompress);
             return output;
@@ -272,11 +269,11 @@ namespace BGI
             byte UpdateKey()
             {
                 var a = 0x4E35 * (key & 0xFFFF);
-                var b = magic | (key >> 0x10);
+                var b = magic | (key >> 0x0010);
                 b *= 0x4E35;
-                b += key * 0x015A + (a >> 0x10);
+                b += key * 0x015A + (a >> 0x0010);
                 b &= 0xFFFF;
-                key = (b << 0x10) + (a & 0xFFFF) + 1;
+                key = (b << 0x0010) + (a & 0xFFFF) + 0x0001;
                 return (byte)b;
             }
 
@@ -284,19 +281,19 @@ namespace BGI
             void BuildHuffmanTree(int capacity)
             {
                 var indices = new int[0x0002, 0x0200];
-                var next_node_index = 1;
-                var depth_nodes = 1;
-                var depth = 0;
-                var child_index = 0;
+                var next_node_index = 0x0001;
+                var depth_nodes = 0x0001;
+                var depth = 0x0000;
+                var child_index = 0x0000;
 
-                indices[0x0000, 0x0000] = 0;
-                index = 0;
+                indices[0x0000, 0x0000] = 0x0000;
+                index = 0x0000;
                 while (index < capacity)
                 {
                     var huffman_nodes_index = child_index;
-                    child_index ^= 1;
+                    child_index ^= 0x0001;
 
-                    var depth_existed_nodes = 0;
+                    var depth_existed_nodes = 0x0000;
                     while (index < codes.Length && codes[index].Depth == depth)
                     {
                         var node = new HuffmanNode { IsParent = false, Code = codes[index++].Code };
@@ -305,33 +302,33 @@ namespace BGI
                     }
 
                     var depth_nodes_to_create = depth_nodes - depth_existed_nodes;
-                    for (var i = 0; i < depth_nodes_to_create; i++)
+                    for (var i = 0x0000; i < depth_nodes_to_create; i++)
                     {
                         var node = new HuffmanNode { IsParent = true };
-                        indices[child_index, i * 2] = node.LeftChildIndex = next_node_index++;
-                        indices[child_index, i * 2 + 1] = node.RightChildIndex = next_node_index++;
+                        indices[child_index, i * 0x0002] = node.LeftChildIndex = next_node_index++;
+                        indices[child_index, i * 0x0002 + 0x0001] = node.RightChildIndex = next_node_index++;
                         nodes[indices[huffman_nodes_index, depth_existed_nodes + i]] = node;
                     }
 
                     depth++;
-                    depth_nodes = depth_nodes_to_create * 2;
+                    depth_nodes = depth_nodes_to_create * 0x0002;
                 }
             }
 
             // form https://github.com/morkt/GARbro
             void HuffmanDecompress(int capacity)
             {
-                var dst_ptr = 0;
-                var cache = 0u;
-                var cached = 0;
+                var dst_ptr = 0x0000_0000;
+                var cache = 0x0000_0000u;
+                var cached = 0x0000_0000;
 
-                for (uint k = 0; k < capacity; k++)
+                for (var k = 0x0000_0000u; k < capacity; k++)
                 {
-                    var node_index = 0;
+                    var node_index = 0x0000_0000;
                     do
                     {
-                        var value = ReadBits(1);
-                        node_index = 0 == value
+                        var value = ReadBits(0x01);
+                        node_index = 0x0000_0000 == value
                             ? nodes[node_index].LeftChildIndex
                             : nodes[node_index].RightChildIndex;
                     } while (nodes[node_index].IsParent);
@@ -339,10 +336,10 @@ namespace BGI
                     var code = nodes[node_index].Code;
                     if (code >= 0x0100)
                     {
-                        var offset = ReadBits(12);
+                        var offset = ReadBits(0x0C);
 
-                        var count = (code & 0xFF) + 2;
-                        offset += 2;
+                        var count = (code & 0xFF) + 0x02;
+                        offset += 0x02;
                         var src = (int)(dst_ptr - offset);
                         var dst = dst_ptr;
                         output.CopyOverlapped(src, dst, count);
@@ -361,11 +358,11 @@ namespace BGI
                     while (cached < bits)
                     {
                         var b = reader.ReadByte();
-                        cache = (cache << 8) | b;
-                        cached += 8;
+                        cache = (cache << 0x08) | b;
+                        cached += 0x08;
                     }
 
-                    var mask = (uint)((1 << bits) - 1);
+                    var mask = (uint)((0x01 << bits) - 0x01);
                     cached -= bits;
 
                     return (cache >> cached) & mask;

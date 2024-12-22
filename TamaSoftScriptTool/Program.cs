@@ -65,8 +65,7 @@ namespace TamaSoft
                     sources.AddRange(Directory
                         .EnumerateFiles(Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".", pattern)
                         .Select(File.OpenRead));
-                    using var stream = new MultiFileStream(sources.ToArray());
-                    using var reader = new BinaryReader(stream);
+                    using var reader = new BinaryReader(new MultiFileStream(sources.ToArray()), Encoding.ASCII, true);
                     var scripts = reader.ReadTamaSoftScripts();
 
                     Directory.CreateDirectory($"{path}~");
@@ -100,8 +99,7 @@ namespace TamaSoft
                     sources.AddRange(Directory
                         .EnumerateFiles(Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".", pattern)
                         .Select(File.OpenRead));
-                    using var stream = new MultiFileStream(sources.ToArray());
-                    using var reader = new BinaryReader(stream);
+                    using var reader = new BinaryReader(new MultiFileStream(sources.ToArray()), Encoding.ASCII, true);
                     var scripts = reader.ReadTamaSoftScripts();
 
                     foreach (var script in scripts)
@@ -114,16 +112,16 @@ namespace TamaSoft
                         {
                             var m = Regex.Match(line, @"◆(\d+)◆(.+$)");
                             if (!m.Success) continue;
-                    
+
                             var index = int.Parse(m.Groups[1].Value);
                             var text = m.Groups[2].Value;
-                    
+
                             var lines = translated[index] ?? Array.Empty<string>();
                             Array.Resize(ref lines, lines.Length + 1);
                             lines[lines.Length - 1] = text;
                             translated[index] = lines;
                         }
-                    
+
                         for (var i = 0; i < script.Commands.Length; i++)
                         {
                             if (translated[i] == null) continue;
@@ -133,9 +131,8 @@ namespace TamaSoft
 
                     var filename = path.PatchFileName(_encoding.WebName);
                     Console.WriteLine($"Write {filename}");
-                    using var s = File.Create(filename);
-                    using var w = new BinaryWriter(s);
-                    w.WriteTamaSoftScripts(scripts);
+                    using var writer = new BinaryWriter(File.Create(filename), Encoding.ASCII, true);
+                    writer.WriteTamaSoftScripts(scripts);
                 }
                     break;
                 default:

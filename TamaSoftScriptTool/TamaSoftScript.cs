@@ -46,7 +46,7 @@ namespace TamaSoft
 
             Labels = new int[reader.ReadUInt32()];
             var table = new uint[Labels.Length];
-            for (var i = 0; i < Labels.Length; i++) table[i] = reader.ReadUInt32();
+            for (var i = 0x00; i < Labels.Length; i++) table[i] = reader.ReadUInt32();
             var offset = 0x0000_00010 + Labels.Length * 0x04;
 
             var commands = new List<byte[]>();
@@ -54,7 +54,7 @@ namespace TamaSoft
             {
                 var position = stream.Position;
 
-                for (var j = 0; j < table.Length; j++)
+                for (var j = 0x00; j < table.Length; j++)
                 {
                     if (table[j] != stream.Position - offset) continue;
                     Labels[j] = commands.Count;
@@ -587,18 +587,18 @@ namespace TamaSoft
 
             using var stream = new MemoryStream(bytes);
             using var writer = new BinaryWriter(stream);
-            
+
             writer.Write(Encoding.ASCII.GetBytes(Version));
             writer.Write(Key);
             writer.Write(X08);
             writer.Write(Labels.Length);
 
             stream.Position = offset;
-            for (var i = 0; i < Commands.Length; i++)
+            for (var i = 0x00; i < Commands.Length; i++)
             {
                 var position = (uint)stream.Position;
 
-                for (var j = 0; j < Labels.Length; j++)
+                for (var j = 0x00; j < Labels.Length; j++)
                 {
                     if (Labels[j] != i) continue;
                     stream.Position = 0x0000_00010 + j * 0x04;

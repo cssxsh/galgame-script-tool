@@ -12,7 +12,7 @@ namespace TamaSoft
             table[0x0271] = 0x0000_0001u;
             Init(table, secret);
             Update(table, key);
-            for (var i = 0; i < data.Length; i++) data[i] ^= Mask(table);
+            for (var i = 0x0000u; i < data.Length; i++) data[i] ^= Mask(table);
         }
 
         private static void Init(uint[] table, uint[] secret)

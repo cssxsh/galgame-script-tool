@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ATool;
 
 namespace SystemEpsylon
 {
@@ -18,24 +19,21 @@ namespace SystemEpsylon
             Name = name;
             Flags = flags;
 
-            if (0 != (Flags & 0x0001_0000))
+            if (0x0000_0000 != (Flags & 0x0001_0000))
             {
-                var key = (uint)bytes.Length >> 2;
-                key ^= key << (int)((key & 7) + 8);
-                for (var i = 0; i < bytes.Length; i += 4)
+                var key = (uint)bytes.Length >> 0x02;
+                key ^= key << (int)((key & 0x07) + 0x08);
+                for (var i = 0x00; i < bytes.Length; i += 0x04)
                 {
-                    if (bytes.Length - i < 4) break;
+                    if (bytes.Length - i < 0x04) break;
                     var temp = BitConverter.ToUInt32(bytes, i) ^ key;
                     BitConverter.GetBytes(temp).CopyTo(bytes, i);
-                    var move = (int)(temp % 24) & 0x1F;
-                    key = key << move | key >> (32 - move);
+                    var move = (int)(temp % 0x18) & 0x1F;
+                    key = key << move | key >> (0x20 - move);
                 }
             }
 
-            for (var i = 0; i < bytes.Length; i++)
-            {
-                bytes[i] ^= 0xFF;
-            }
+            bytes.Xor(0xFF);
 
             var commands = new List<byte[]>();
             using var stream = new MemoryStream(bytes);
@@ -131,30 +129,27 @@ namespace SystemEpsylon
         public byte[] ToBytes()
         {
             var bytes = new byte[Commands.Sum(command => command.Length)];
-            var index = 0;
+            var index = 0x00;
             foreach (var command in Commands)
             {
                 command.CopyTo(bytes, index);
                 index += command.Length;
             }
 
-            for (var i = 0; i < bytes.Length; i++)
-            {
-                bytes[i] ^= 0xFF;
-            }
+            bytes.Xor(0xFF);
 
             // ReSharper disable once InvertIf
-            if (0 != (Flags & 0x0001_0000))
+            if (0x0000_0000 != (Flags & 0x0001_0000))
             {
-                var key = (uint)bytes.Length >> 2;
-                key ^= key << (int)((key & 7) + 8);
-                for (var i = 0; i < bytes.Length; i += 4)
+                var key = (uint)bytes.Length >> 0x02;
+                key ^= key << (int)((key & 0x07) + 0x08);
+                for (var i = 0x00; i < bytes.Length; i += 0x04)
                 {
-                    if (bytes.Length - i < 4) break;
+                    if (bytes.Length - i < 0x04) break;
                     var temp = BitConverter.ToUInt32(bytes, i);
                     BitConverter.GetBytes(temp ^ key).CopyTo(bytes, i);
-                    var move = (int)(temp % 24) & 0x1F;
-                    key = key << move | key >> (32 - move);
+                    var move = (int)(temp % 0x18) & 0x1F;
+                    key = key << move | key >> (0x20 - move);
                 }
             }
 

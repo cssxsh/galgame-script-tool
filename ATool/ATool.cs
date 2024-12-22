@@ -277,9 +277,33 @@ namespace ATool
             }
         }
 
+        public static void Xor(this byte[] source, byte mask)
+        {
+            for (var i = 0; i < source.Length; i++)
+            {
+                source[i] ^= mask;
+            }
+        }
+
+        public static void Xor(this byte[] source, ushort mask)
+        {
+            for (var i = 0x00; i < source.Length; i++)
+            {
+                source[i] ^= (byte)(mask >> (i % 0x01 * 0x08));
+            }
+        }
+
+        public static void Xor(this byte[] source, uint mask)
+        {
+            for (var i = 0; i < source.Length; i++)
+            {
+                source[i] ^= (byte)(mask >> (i % 0x04 * 0x08));
+            }
+        }
+
         public static void EndianReverse(this byte[] source)
         {
-            for (var offset = 0; offset < source.Length; offset += 0x04)
+            for (var offset = 0; offset + 0x04 <= source.Length; offset += 0x04)
             {
                 Array.Reverse(source, offset, 0x04);
             }
@@ -333,7 +357,7 @@ namespace ATool
 
         public static string[] ReadResourceNames(this string path, string type)
         {
-            var module = LoadLibraryEx(path, IntPtr.Zero, 0x02);
+            var module = LoadLibraryEx(path, IntPtr.Zero, 0x02 | 0x20);
             if (module == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
             var names = new HashSet<string>();
             try
@@ -358,16 +382,13 @@ namespace ATool
         private static extern bool FreeLibrary(IntPtr hModule);
 
         [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern IntPtr FindResource(IntPtr hModule,
-            string lpName, string lpType);
+        private static extern IntPtr FindResource(IntPtr hModule, string lpName, string lpType);
 
         [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern IntPtr LoadResource(IntPtr hModule,
-            IntPtr hResource);
+        private static extern IntPtr LoadResource(IntPtr hModule, IntPtr hResource);
 
         [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern uint SizeofResource(IntPtr hModule,
-            IntPtr hResource);
+        private static extern uint SizeofResource(IntPtr hModule, IntPtr hResource);
 
         [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         private static extern IntPtr LockResource(IntPtr hResData);
