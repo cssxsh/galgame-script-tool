@@ -10,12 +10,12 @@ namespace ATool
         public static uint[] CrcTable(uint polynomial, int width)
         {
             var table = new uint[0x0100];
-            for (var n = 0x00u; n < 0x0100; n++)
+            for (var n = 0x0000u; n < 0x0100; n++)
             {
                 var c = n << (width - 0x08);
                 for (var k = 0x00; k < 0x08; k++)
                 {
-                    c = (c << 1) ^ (0 != (c & 0x8000_0000u) ? polynomial : 0x0000_0000);
+                    c = (c << 0x01) ^ (0x0000_0000u != (c & 0x8000_0000u) ? polynomial : 0x0000_0000u);
                 }
 
                 table[n] = c;

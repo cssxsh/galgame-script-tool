@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -10,11 +11,12 @@ using ImageMagick.Formats;
 namespace Will
 {
     // ReSharper disable once InconsistentNaming
+    [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
     public readonly struct WillMBF
     {
         public readonly KeyValuePair<string, byte[]>[] Items;
 
-        private readonly uint _x0C;
+        public readonly uint X0C;
 
         public WillMBF(byte[] bytes, Encoding encoding)
         {
@@ -24,7 +26,7 @@ namespace Will
             if (header != "MBF0") throw new FormatException($"unsupported header: {header}");
             var count = reader.ReadInt32();
             var offset = reader.ReadInt32();
-            _x0C = reader.ReadUInt32();
+            X0C = reader.ReadUInt32();
             var x10 = reader.ReadUInt32(); // file size or 0
             if (x10 != bytes.Length) Debug.WriteLine($"MBF0:00000010h {x10:X8} != {bytes.Length:X8}");
 
@@ -105,7 +107,7 @@ namespace Will
             writer.Write(encoding.GetBytes("MBF0"));
             writer.Write(Items.Length);
             writer.Write(offset);
-            writer.Write(_x0C);
+            writer.Write(X0C);
             writer.Write(result.Length);
 
             var data = offset;

@@ -16,7 +16,7 @@ namespace ATool
             var buffer = new byte[limit];
             for (var i = 0x00; i < limit; i++)
             {
-                var count = reader.Read(buffer, i, 1);
+                var count = reader.Read(buffer, i, 0x01);
                 if (count != 0x00 && buffer[i] != 0x00) continue;
                 Array.Resize(ref buffer, i);
                 return buffer;
@@ -57,7 +57,7 @@ namespace ATool
                 .Replace("㍊", "mb") // '\u334A'
                 .Replace("㏍", "KK") // '\u33CD'
                 .ToCharArray();
-            for (var i = 0; i < chars.Length; i++)
+            for (var i = 0x00; i < chars.Length; i++)
             {
                 chars[i] = chars[i] switch
                 {
@@ -174,7 +174,7 @@ namespace ATool
         public static string ReplaceHalfWidthKana(this string source)
         {
             var chars = source.ToCharArray();
-            for (var i = 0; i < chars.Length; i++)
+            for (var i = 0x00; i < chars.Length; i++)
             {
                 chars[i] = chars[i] switch
                 {
@@ -256,7 +256,7 @@ namespace ATool
         {
             if (dst > src)
             {
-                while (count > 0)
+                while (count > 0x00)
                 {
                     var preceding = Math.Min(dst - src, count);
                     Buffer.BlockCopy(data, src, data, dst, preceding);
@@ -272,7 +272,7 @@ namespace ATool
 
         public static void Rot(this byte[] source)
         {
-            for (var i = 0; i < source.Length; i++)
+            for (var i = 0x00; i < source.Length; i++)
             {
                 source[i] = (byte)((source[i] >> 0x04) | (source[i] << 0x04));
             }
@@ -280,7 +280,7 @@ namespace ATool
 
         public static void Xor(this byte[] source, byte mask)
         {
-            for (var i = 0; i < source.Length; i++)
+            for (var i = 0x00; i < source.Length; i++)
             {
                 source[i] ^= mask;
             }
@@ -290,13 +290,13 @@ namespace ATool
         {
             for (var i = 0x00; i < source.Length; i++)
             {
-                source[i] ^= (byte)(mask >> (i % 0x01 * 0x08));
+                source[i] ^= (byte)(mask >> (i % 0x02 * 0x08));
             }
         }
 
         public static void Xor(this byte[] source, uint mask)
         {
-            for (var i = 0; i < source.Length; i++)
+            for (var i = 0x00; i < source.Length; i++)
             {
                 source[i] ^= (byte)(mask >> (i % 0x04 * 0x08));
             }
@@ -304,7 +304,7 @@ namespace ATool
 
         public static void EndianReverse(this byte[] source)
         {
-            for (var offset = 0; offset + 0x04 <= source.Length; offset += 0x04)
+            for (var offset = 0x00; offset + 0x04 <= source.Length; offset += 0x04)
             {
                 Array.Reverse(source, offset, 0x04);
             }
