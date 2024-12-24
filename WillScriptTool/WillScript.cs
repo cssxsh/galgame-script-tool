@@ -16,22 +16,22 @@ namespace Will
             Name = name;
 
             var commands = new List<byte[]>();
-            using var steam = new MemoryStream(bytes);
-            using var reader = new BinaryReader(steam);
-            while (steam.Position < bytes.Length)
+            using var stream = new MemoryStream(bytes);
+            using var reader = new BinaryReader(stream);
+            while (stream.Position < bytes.Length)
             {
-                var position = steam.Position;
+                var position = stream.Position;
                 var size = reader.ReadByte();
                 if (size == 0x00 || size == 0xFF)
                 {
-                    steam.Position = position;
+                    stream.Position = position;
                     var temp = reader.ReadBytes((int)(bytes.Length - position));
                     if (temp.Any(b => b != size)) throw new FormatException($"{name} at 0x{position:X8}");
                     commands.Add(temp);
                     break;
                 }
 
-                steam.Position = position;
+                stream.Position = position;
                 commands.Add(reader.ReadBytes(size));
             }
 

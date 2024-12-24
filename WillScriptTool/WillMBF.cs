@@ -19,8 +19,8 @@ namespace Will
 
         public WillMBF(byte[] bytes, Encoding encoding)
         {
-            using var steam = new MemoryStream(bytes);
-            using var reader = new BinaryReader(steam, encoding);
+            using var stream = new MemoryStream(bytes);
+            using var reader = new BinaryReader(stream, encoding);
             var header = encoding.GetString(reader.ReadBytes(0x04));
             if (header != "MBF0") throw new FormatException($"unsupported header: {header}");
             var count = reader.ReadInt32();
@@ -34,17 +34,17 @@ namespace Will
             var data = offset;
             for (var i = 0; i < count; i++)
             {
-                steam.Position = index;
+                stream.Position = index;
                 var next = reader.ReadUInt16();
                 if (next == 0x0000) continue;
                 var name = encoding.GetString(reader.ReadBytes(next - 0x02).TrimEnd());
                 index += next;
 
-                steam.Position = data;
+                stream.Position = data;
                 var type = Encoding.ASCII.GetString(reader.ReadBytes(0x02));
                 if (type != "BC") throw new FormatException($"unsupported type: {type}");
                 var size = reader.ReadInt32();
-                steam.Position = data;
+                stream.Position = data;
                 var content = reader.ReadBytes(size);
                 Items[i] = new KeyValuePair<string, byte[]>(name, content);
                 data += size;
@@ -100,8 +100,8 @@ namespace Will
             size += Items.Sum(item => item.Value.Length);
             var result = new byte[size];
 
-            using var steam = new MemoryStream(result);
-            using var writer = new BinaryWriter(steam, encoding);
+            using var stream = new MemoryStream(result);
+            using var writer = new BinaryWriter(stream, encoding);
 
             writer.Write(encoding.GetBytes("MBF0"));
             writer.Write(Items.Length);
@@ -112,14 +112,14 @@ namespace Will
             var data = offset;
             foreach (var item in Items)
             {
-                steam.Position = index;
+                stream.Position = index;
                 var name = encoding.GetBytes(item.Key);
                 var next = (ushort)(0x03 + name.Length);
                 writer.Write(next);
                 writer.Write(name);
                 index += next;
 
-                steam.Position = data;
+                stream.Position = data;
                 writer.Write(item.Value);
                 data += item.Value.Length;
             }
