@@ -227,10 +227,10 @@ namespace Will
             _ = reader.ReadUInt32(); // folder files count
 
             reader.BaseStream.Position = offset;
-            for (var i = 0; i < files; i++)
+            for (var i = 0x00; i < files; i++)
             {
-                var len = reader.ReadByte() - 1;
-                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(len).TrimEnd());
+                var len = reader.ReadByte() - 0x01;
+                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(len));
                 offset = reader.ReadUInt32(); // file offset
                 var size = reader.ReadInt32(); // size offset
 

@@ -4,7 +4,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
-using ATool;
 
 namespace Unknown
 {
@@ -26,7 +25,7 @@ namespace Unknown
             var commands = new List<byte[]>();
             using var stream = new MemoryStream(bytes);
             using var reader = new BinaryReader(stream);
-            var header = Encoding.ASCII.GetString(reader.ReadBytes(0x10).TrimEnd());
+            var header = Encoding.ASCII.GetString(reader.ReadBytes(0x10)).TrimEnd('\0');
             if (header != "MINET") throw new FormatException($"header: {header}");
             X10 = reader.ReadUInt32();
             var x14 = reader.ReadUInt32();

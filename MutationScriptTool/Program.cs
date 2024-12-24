@@ -152,7 +152,7 @@ namespace Mutation
             for (var i = 0x00; i < count; i++)
             {
                 reader.BaseStream.Position = 0x0000_0006 + i * 0x18;
-                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x10).TrimEnd());
+                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x10)).TrimEnd('\0');
                 var offset = reader.ReadUInt32();
                 var size = reader.ReadInt32();
 

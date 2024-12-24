@@ -11,17 +11,18 @@ namespace ATool
     {
         #region Text
 
-        public static byte[] TrimEnd(this byte[] source)
+        public static byte[] ReadUntilEnd(this BinaryReader reader, int limit = 0x0400)
         {
-            var target = (byte[])source.Clone();
-            for (var i = 0; i < source.Length; i++)
+            var buffer = new byte[limit];
+            for (var i = 0x00; i < limit; i++)
             {
-                if (source[i] != 0x00) continue;
-                Array.Resize(ref target, i);
-                break;
+                var count = reader.Read(buffer, i, 1);
+                if (count != 0x00 && buffer[i] != 0x00) continue;
+                Array.Resize(ref buffer, i);
+                return buffer;
             }
 
-            return target;
+            return buffer;
         }
 
         public static string PatchFileName(this string path, string version)

@@ -145,7 +145,7 @@ namespace SystemEpsylon
             for (var i = 0x00; i < count; i++)
             {
                 reader.BaseStream.Position = 0x0000_0010 + i * 0x30;
-                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x20).TrimEnd());
+                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x20)).TrimEnd('\0');
                 var offset = reader.ReadUInt32();
                 var flags = reader.ReadUInt32();
                 var size = reader.ReadInt32();

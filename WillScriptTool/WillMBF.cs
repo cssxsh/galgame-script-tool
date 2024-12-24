@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using ATool;
 using ImageMagick;
 using ImageMagick.Formats;
 
@@ -27,7 +26,7 @@ namespace Will
             var offset = reader.ReadInt32();
             _x0C = reader.ReadUInt32();
             var x10 = reader.ReadUInt32(); // file size or 0
-            if (x10 != bytes.Length) Debug.WriteLine($"MBF0:10 {x10:X8} != {bytes.Length:X8}");
+            if (x10 != bytes.Length) Debug.WriteLine($"MBF0:00000010h {x10:X8} != {bytes.Length:X8}");
 
             Items = new KeyValuePair<string, byte[]>[count];
             var index = 0x0000_0020;
@@ -37,7 +36,7 @@ namespace Will
                 stream.Position = index;
                 var next = reader.ReadUInt16();
                 if (next == 0x0000) continue;
-                var name = encoding.GetString(reader.ReadBytes(next - 0x02).TrimEnd());
+                var name = encoding.GetString(reader.ReadBytes(next - 0x02)).TrimEnd('\0');
                 index += next;
 
                 stream.Position = data;

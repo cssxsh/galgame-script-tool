@@ -33,10 +33,10 @@ namespace BGI
                 var cp932 = Encoding.GetEncoding(932);
 
                 stream.Position = 0x0000_0000;
-                var header = Encoding.ASCII.GetString(reader.ReadBytes(0x1C).TrimEnd());
+                var header = Encoding.ASCII.GetString(reader.ReadBytes(0x1C));
                 switch (header)
                 {
-                    case "BurikoCompiledScriptVer1.00":
+                    case "BurikoCompiledScriptVer1.00\0":
                         break;
                     default:
                         throw new FormatException($"unsupported: {header}");
@@ -70,8 +70,7 @@ namespace BGI
 
                             stream.Position = command + diff;
                             if (size > stream.Position) size = (uint)stream.Position;
-                            var count = (int)(source.Length - position > 0x80 ? 0x80 : source.Length - position);
-                            var bytes = reader.ReadBytes(count).TrimEnd();
+                            var bytes = reader.ReadUntilEnd(0x80);
                             data.Add(new KeyValuePair<uint, byte[]>(position, bytes));
 
                             Debug.WriteLine($"{position:X8}>{instruction:X2} PUSH {diff:X8}");
@@ -267,8 +266,7 @@ namespace BGI
 
                             stream.Position = command + offset;
                             if (size > stream.Position) size = (uint)stream.Position;
-                            var count = (int)(source.Length - offset > 0x80 ? 0x80 : source.Length - offset);
-                            var bytes = reader.ReadBytes(count).TrimEnd();
+                            var bytes = reader.ReadUntilEnd(0x80);
 
                             Debug.WriteLine($"{position:X8}>{instruction:X2} LABEL");
                             Debug.WriteLine($"{cp932.GetString(bytes)}:{line:D4}");
@@ -400,8 +398,7 @@ namespace BGI
                         var offset = reader.ReadUInt16();
                         stream.Position = position + offset;
                         if (size > stream.Position) size = (uint)stream.Position;
-                        var count = source.Length - offset > 0x80 ? 0x80 : source.Length - offset;
-                        var bytes = reader.ReadBytes(count).TrimEnd();
+                        var bytes = reader.ReadUntilEnd(0x80);
                         data.Add(new KeyValuePair<uint, byte[]>(position, bytes));
                     }
 

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using ATool;
 
 namespace Will
 {
@@ -31,7 +30,7 @@ namespace Will
             {
                 stream.Position = offsetOfIndex;
                 var size = reader.ReadByte();
-                var directory = encoding.GetString(reader.ReadBytes(size - 0x01).TrimEnd());
+                var directory = encoding.GetString(reader.ReadBytes(size - 0x01)).TrimEnd('\0');
                 var offsetOfDirectory = reader.ReadUInt32();
                 var countOfFile = reader.ReadInt32();
                 offsetOfIndex += size + 0x08u;
@@ -40,7 +39,7 @@ namespace Will
                 {
                     stream.Position = offsetOfDirectory;
                     size = reader.ReadByte();
-                    var file = encoding.GetString(reader.ReadBytes(size - 0x01).TrimEnd());
+                    var file = encoding.GetString(reader.ReadBytes(size - 0x01)).TrimEnd('\0');
                     var offsetOfFile = reader.ReadUInt32();
                     var sizeOfFile = reader.ReadInt32();
                     offsetOfDirectory += size + 0x08u;

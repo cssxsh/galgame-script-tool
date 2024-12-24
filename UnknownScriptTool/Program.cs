@@ -329,7 +329,7 @@ namespace Unknown
                 reader.BaseStream.Position = 0x0000_0018 + i * 0x90;
                 var index = reader.ReadBytes(0x90);
                 index.Xor(mask);
-                var name = Encoding.GetEncoding(932).GetString(index.TrimEnd());
+                var name = Encoding.GetEncoding(932).GetString(index, 0x00, 0x0C).TrimEnd('\0');
                 var size = BitConverter.ToInt32(index, 0x80);
                 var sort = BitConverter.ToUInt32(index, 0x84);
                 var offset = BitConverter.ToUInt32(index, 0x88);

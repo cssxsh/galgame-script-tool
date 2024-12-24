@@ -221,7 +221,7 @@ namespace Ikura
             if (head != FileHead) throw new NotSupportedException($"unsupported version: {head}.");
             var count = reader.ReadInt32();
             _ = reader.ReadInt32();
-            var type = Encoding.ASCII.GetString(reader.ReadBytes(0x0C).TrimEnd());
+            var type = Encoding.ASCII.GetString(reader.ReadBytes(0x0C)).TrimEnd('\0');
             if (type != "ISF") throw new NotSupportedException($"unsupported type: {type}.");
             var offset = reader.ReadInt32();
 
@@ -230,7 +230,7 @@ namespace Ikura
             for (var i = 0x00; i < count; i++)
             {
                 reader.BaseStream.Position = offset + i * 0x14;
-                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x0C).TrimEnd());
+                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x0C)).TrimEnd('\0');
                 var pos = reader.ReadInt32();
                 var size = reader.ReadInt32();
 
@@ -249,7 +249,7 @@ namespace Ikura
             if (head != FileHead) throw new NotSupportedException($"unsupported version: {head}.");
             var count = reader.ReadInt32();
             _ = reader.ReadInt32();
-            var type = Encoding.ASCII.GetString(reader.ReadBytes(0x0C).TrimEnd());
+            var type = Encoding.ASCII.GetString(reader.ReadBytes(0x0C)).TrimEnd('\0');
             if (type != "SNR") throw new NotSupportedException($"unsupported type: {type}.");
             var offset = reader.ReadInt32();
 
@@ -258,7 +258,7 @@ namespace Ikura
             for (var i = 0x00; i < count; i++)
             {
                 reader.BaseStream.Position = offset + i * 0x14;
-                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x0C).TrimEnd());
+                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x0C)).TrimEnd('\0');
                 if (!name.ToUpperInvariant().EndsWith(".SNR")) continue;
                 var pos = reader.ReadInt32();
                 var size = reader.ReadInt32();

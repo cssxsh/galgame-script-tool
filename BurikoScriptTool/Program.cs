@@ -206,7 +206,7 @@ namespace BGI
             for (var i = 0x00; i < count; i++)
             {
                 reader.BaseStream.Position = 0x0000_0010 + i * 0x80;
-                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x60).TrimEnd());
+                var name = Encoding.GetEncoding(932).GetString(reader.ReadBytes(0x60)).TrimEnd('\0');
                 var offset = 0x0000_0010 + count * 0x80 + reader.ReadUInt32();
                 var size = reader.ReadInt32();
                 reader.BaseStream.Position = offset;
@@ -230,10 +230,10 @@ namespace BGI
         {
             using var stream = new MemoryStream(source);
             using var reader = new BinaryReader(stream);
-            var header = Encoding.ASCII.GetString(reader.ReadBytes(0x10).TrimEnd());
+            var header = Encoding.ASCII.GetString(reader.ReadBytes(0x10));
             switch (header)
             {
-                case "DSC FORMAT 1.00":
+                case "DSC FORMAT 1.00\0":
                     break;
                 default:
                     throw new FormatException($"unsupported: {header}");
