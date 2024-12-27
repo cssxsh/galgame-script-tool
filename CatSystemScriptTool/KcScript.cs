@@ -4,12 +4,13 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
+using ATool;
 using Org.BouncyCastle.Utilities.Zlib;
 
 namespace CatSystem
 {
     [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
-    public class KcsScript
+    public class KcScript
     {
         public readonly string Name;
         
@@ -23,7 +24,7 @@ namespace CatSystem
 
         public readonly KeyValuePair<uint, byte[]>[] Texts;
 
-        public KcsScript(string name, byte[] bytes)
+        public KcScript(string name, byte[] bytes)
         {
             Name = name;
 
@@ -81,11 +82,12 @@ namespace CatSystem
                 {
                     zlib.Write(offset);
                     zlib.Write(Texts[i].Key);
-                    offset += Texts[i].Value.Length;
                 }
                 for (var i = 0x00; i < Texts.Length; i++)
                 {
                     zlib.Write(Texts[i].Value);
+                    zlib.Write((ushort)0x0000);
+                    offset += Texts[i].Value.Length + 0x02;
                 }
             }
             
@@ -119,11 +121,10 @@ namespace CatSystem
             for (var i = 0x00; i < count; i++)
             {
                 stream.Position = i * 0x08;
-                var l = reader.ReadUInt32();
+                var offset = reader.ReadUInt32();
                 var key = reader.ReadUInt32();
-                var r = i != count - 0x01 ? reader.ReadUInt32() : (uint)bytes.Length;
-                stream.Position = l;
-                var value = reader.ReadBytes((int)(r - l));
+                stream.Position = offset;
+                var value = reader.ReadUntilEnd();
                 texts[i] = new KeyValuePair<uint, byte[]>(key, value);
             }
 

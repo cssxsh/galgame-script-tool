@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
+using ATool;
 using Org.BouncyCastle.Utilities.Zlib;
 
 namespace CatSystem
@@ -50,11 +51,10 @@ namespace CatSystem
             for (var i = 0x00; i < Commands.Length; i++)
             {
                 stream.Position = 0x0000_00010 + x08 + i * 0x04;
-                var l = 0x0000_00010 + x0C + reader.ReadUInt32();
-                var r = i != Commands.Length - 0x01 ? 0x0000_00010 + x0C + reader.ReadUInt32() : (uint)bytes.Length;
-                stream.Position = l;
+                var offset = reader.ReadUInt32();
+                stream.Position = 0x0000_00010 + x0C + offset;
                 var key = reader.ReadUInt16();
-                var value = reader.ReadBytes((int)(r - l) - 0x02);
+                var value = reader.ReadUntilEnd();
                 Commands[i] = new KeyValuePair<ushort, byte[]>(key, value);
             }
         }
@@ -117,7 +117,7 @@ namespace CatSystem
         {
             var x08 = Labels.Length * 0x08;
             var x0C = x08 + Commands.Length * 0x04;
-            var bytes = new byte[0x10 + x0C + Commands.Sum(text => 0x02 + text.Value.Length)];
+            var bytes = new byte[0x10 + x0C + Commands.Sum(text => 0x02 + text.Value.Length + 0x01)];
             using var stream = new MemoryStream(bytes);
             using var writer = new BinaryWriter(stream);
 
@@ -141,8 +141,9 @@ namespace CatSystem
                 stream.Position = 0x0000_0010 + x0C + offset;
                 writer.Write(Commands[i].Key);
                 writer.Write(Commands[i].Value);
+                writer.Write((byte)0x00);
 
-                offset += 0x02 + Commands[i].Value.Length;
+                offset += 0x02 + Commands[i].Value.Length + 0x01;
             }
 
             return bytes;

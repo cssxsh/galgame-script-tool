@@ -16,7 +16,7 @@ namespace CatSystem
         public static void Main(string[] args)
         {
             var mode = "";
-            var path = "kcs.int";
+            var path = "scene.int";
             switch (args.Length)
             {
                 case 1:
@@ -76,14 +76,13 @@ namespace CatSystem
                             case ".kcs":
                                 Console.WriteLine($"Export {script.Key}");
                             {
-                                var kcs = new KcsScript(script.Key, script.Value);
+                                var kcs = new KcScript(script.Key, script.Value);
 
                                 using var writer = File.CreateText($"{path}~/{kcs.Name}.txt");
                                 for (var i = 0x00; i < kcs.Texts.Length; i++)
                                 {
                                     foreach (var line in _encoding
                                                  .GetString(kcs.Texts[i].Value)
-                                                 .TrimEnd('\0')
                                                  .Split('\n'))
                                     {
                                         writer.WriteLine($">{kcs.Texts[i].Key:X8}");
@@ -149,12 +148,35 @@ namespace CatSystem
                         {
                             case ".kcs":
                                 Console.WriteLine($"Import {script.Key}");
-                                // {
-                                //     using var s = new MemoryStream(script.Value);
-                                //     using var r = new BinaryReader(s);
-                                //     var bytes = ReadKCS(r);
-                                //     File.WriteAllBytes($"{path}~/{script.Key}.bin", bytes);
-                                // }
+                            {
+                                var kcs = new KcScript(script.Key, script.Value);
+
+                                var translated = new string[kcs.Texts.Length][];
+                                foreach (var line in File.ReadLines($"{path}~/{kcs.Name}.txt"))
+                                {
+                                    var m = Regex.Match(line, @"◆(\d+)◆(.+$)");
+                                    if (!m.Success) continue;
+
+                                    var index = int.Parse(m.Groups[1].Value);
+                                    var text = m.Groups[2].Value;
+
+                                    var lines = translated[index] ?? Array.Empty<string>();
+                                    Array.Resize(ref lines, lines.Length + 1);
+                                    lines[lines.Length - 1] = text;
+                                    translated[index] = lines;
+                                }
+
+                                for (var i = 0; i < kcs.Texts.Length; i++)
+                                {
+                                    if (translated[i] == null) continue;
+                                    var key = kcs.Texts[i].Key;
+                                    var value = _encoding.GetBytes(string.Join("\n", translated[i]));
+                                    kcs.Texts[i] = new KeyValuePair<uint, byte[]>(key, value);
+                                }
+
+                                var file = Path.Combine(directory, kcs.Name);
+                                File.WriteAllBytes(file, kcs.ToBytes());
+                            }
                                 break;
                             case ".fes":
                                 Console.WriteLine($"Import {script.Key}");
@@ -233,11 +255,12 @@ namespace CatSystem
                 count--;
                 offset += 0x48;
                 var password = GetPassword("V_CODE2");
-                Console.WriteLine($"Password: {Encoding.GetEncoding(932).GetString(password)}");
-                var crc32 = password.Crc32();
+                Console.WriteLine($"Password: {password}");
+                var code = Encoding.ASCII.GetBytes(password);
+                var crc32 = code.Crc32();
                 Debug.WriteLine($"CRC32: {crc32:X8}");
                 var table = Hash.CrcTable(0x04C1_1DB7, 0x20);
-                key = password.Aggregate(0xFFFF_FFFFu, (v, c) => ~table[(v >> 0x18) ^ c] ^ (v << 0x08));
+                key = code.Aggregate(0xFFFF_FFFFu, (v, c) => ~table[(v >> 0x18) ^ c] ^ (v << 0x08));
                 Debug.WriteLine($"KEY: {key:X8}");
                 _ = reader.ReadUInt32();
                 var seed = reader.ReadUInt32();
@@ -248,7 +271,7 @@ namespace CatSystem
             }
 
             var scripts = new KeyValuePair<string, byte[]>[count];
-            for (var i = 0; i < count; i++)
+            for (var i = 0x00; i < count; i++)
             {
                 reader.BaseStream.Position = offset + i * 0x48;
                 var temp = reader.ReadBytes(0x40);
@@ -359,7 +382,7 @@ namespace CatSystem
                 });
         }
 
-        private static byte[] GetPassword(string type)
+        private static string GetPassword(string type)
         {
             var path = Environment.GetEnvironmentVariable("GAME_PATH") ?? ".";
             var blowfish = new BlowfishEngine();
@@ -381,10 +404,9 @@ namespace CatSystem
 
                 Debug.WriteLine($"DATA#{type}: {BitConverter.ToString(code)}");
                 blowfish.Init(false, new KeyParameter(key));
-                var count = blowfish.Process(code);
-                Array.Resize(ref code, count);
+                _ = blowfish.Process(code);
 
-                return code;
+                return Encoding.ASCII.GetString(code).TrimEnd('\0');
             }
 
             throw new FormatException($"Not found password by {type}.");
