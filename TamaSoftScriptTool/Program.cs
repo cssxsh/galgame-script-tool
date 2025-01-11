@@ -65,7 +65,7 @@ namespace TamaSoft
                     sources.AddRange(Directory
                         .EnumerateFiles(Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".", pattern)
                         .Select(File.OpenRead));
-                    using var reader = new BinaryReader(new MultiFileStream(sources.ToArray()), Encoding.ASCII, true);
+                    using var reader = new BinaryReader(new MultiFileStream(sources.ToArray()));
                     var scripts = reader.ReadTamaSoftScripts();
 
                     Directory.CreateDirectory($"{path}~");
@@ -99,7 +99,7 @@ namespace TamaSoft
                     sources.AddRange(Directory
                         .EnumerateFiles(Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".", pattern)
                         .Select(File.OpenRead));
-                    using var reader = new BinaryReader(new MultiFileStream(sources.ToArray()), Encoding.ASCII, true);
+                    using var reader = new BinaryReader(new MultiFileStream(sources.ToArray()));
                     var scripts = reader.ReadTamaSoftScripts();
 
                     foreach (var script in scripts)
@@ -131,7 +131,7 @@ namespace TamaSoft
 
                     var filename = path.PatchFileName(_encoding.WebName);
                     Console.WriteLine($"Write {filename}");
-                    using var writer = new BinaryWriter(File.Create(filename), Encoding.ASCII, true);
+                    using var writer = new BinaryWriter(File.Create(filename));
                     writer.WriteTamaSoftScripts(scripts);
                 }
                     break;

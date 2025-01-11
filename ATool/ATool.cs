@@ -159,8 +159,13 @@ namespace ATool
                     #region 单字节
 
                     '\uFF61' => force ? '\u002E' : '\u0020', // '｡' => '.'
+                    '\uFF62' => force ? '\u005B' : '\u0020', // '｢' => '['
+                    '\uFF63' => force ? '\u005D' : '\u0020', // '｣' => ']'
                     '\uFF64' => force ? '\u002C' : '\u0020', // '､' => ','
                     '\uFF65' => force ? '\u002D' : '\u0020', // '･' => '-'
+                    '\uFF70' => force ? '\u002D' : '\u0020', // 'ｰ' => '-'
+                    '\uFF9E' => force ? '\u002D' : '\u0020', // 'ﾞ' => '"'
+                    '\uFF9F' => force ? '\u002D' : '\u0020', // 'ﾟ' => '`'
 
                     #endregion
 
@@ -316,7 +321,7 @@ namespace ATool
 
         public static byte[] ReadResource(this string path, string name, string type)
         {
-            var module = LoadLibraryEx(path, IntPtr.Zero, 0x02 | 0x20);
+            var module = LoadLibraryEx(path, IntPtr.Zero, 0x0000_0022u);
             if (module == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
             try
             {
@@ -339,7 +344,7 @@ namespace ATool
 
         public static string[] ReadResourceTypes(this string path)
         {
-            var module = LoadLibraryEx(path, IntPtr.Zero, 0x02 | 0x20);
+            var module = LoadLibraryEx(path, IntPtr.Zero, 0x0000_0022u);
             if (module == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
             var types = new HashSet<string>();
             try
@@ -358,7 +363,7 @@ namespace ATool
 
         public static string[] ReadResourceNames(this string path, string type)
         {
-            var module = LoadLibraryEx(path, IntPtr.Zero, 0x02 | 0x20);
+            var module = LoadLibraryEx(path, IntPtr.Zero, 0x0000_0022u);
             if (module == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
             var names = new HashSet<string>();
             try

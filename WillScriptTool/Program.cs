@@ -82,7 +82,7 @@ namespace Will
                     _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
-                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                    using var reader = new BinaryReader(File.OpenRead(path));
                     var scripts = reader.ReadWillScripts();
 
                     Directory.CreateDirectory($"{path}~");
@@ -108,7 +108,7 @@ namespace Will
                     _encoding ??= Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
-                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                    using var reader = new BinaryReader(File.OpenRead(path));
                     var scripts = reader.ReadWillScripts();
 
                     foreach (var script in scripts)
@@ -137,7 +137,7 @@ namespace Will
 
                     var filename = path.PatchFileName(_encoding.WebName);
                     Console.WriteLine($"Write {filename}");
-                    using var writer = new BinaryWriter(File.Create(filename), Encoding.ASCII, true);
+                    using var writer = new BinaryWriter(File.Create(filename));
                     writer.WriteWillScripts(scripts);
                 }
                     break;

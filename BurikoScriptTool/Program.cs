@@ -71,7 +71,7 @@ namespace BGI
                     _encoding ??= Encoding.GetEncoding("SHIFT-JIS");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
-                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                    using var reader = new BinaryReader(File.OpenRead(path));
                     var files = reader.ReadBurikoArchive();
 
                     Directory.CreateDirectory($"{path}~");
@@ -97,7 +97,7 @@ namespace BGI
                     _encoding ??= Encoding.GetEncoding("GBK");
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
-                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                    using var reader = new BinaryReader(File.OpenRead(path));
                     var files = reader.ReadBurikoArchive();
 
                     Directory.CreateDirectory(_encoding.WebName);

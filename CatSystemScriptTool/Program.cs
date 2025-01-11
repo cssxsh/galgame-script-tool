@@ -64,7 +64,7 @@ namespace CatSystem
                     Console.WriteLine($"Read {Path.GetFullPath(path)}");
                 {
                     Environment.SetEnvironmentVariable("GAME_PATH", Path.GetDirectoryName(path));
-                    using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                    using var reader = new BinaryReader(File.OpenRead(path));
                     var scripts = reader.ReadKIF();
 
                     Directory.CreateDirectory($"{path}~");

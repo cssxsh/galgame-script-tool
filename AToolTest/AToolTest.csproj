@@ -89,6 +89,10 @@
             <Project>{b78a8c91-7f4b-40a0-94e8-76b4f357677e}</Project>
             <Name>IkuraScriptTool</Name>
         </ProjectReference>
+        <ProjectReference Include="..\TamaSoftScriptTool\TamaSoftScriptTool.csproj">
+            <Project>{ff439d9a-8894-42aa-b129-5095cee2569a}</Project>
+            <Name>TamaSoftScriptTool</Name>
+        </ProjectReference>
         <ProjectReference Include="..\WillScriptTool\WillScriptTool.csproj">
             <Project>{7d4bd0a5-c54d-44ec-b158-25f44c117c9f}</Project>
             <Name>WillScriptTool</Name>
@@ -102,8 +106,8 @@
         <PropertyGroup>
             <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them. For more information, see http://go.microsoft.com/fwlink/?LinkID=322105.The missing file is {0}.</ErrorText>
         </PropertyGroup>
-        <Error Condition="!Exists('..\packages\Magick.NET-Q16-HDRI-AnyCPU.14.2.0\build\netstandard20\Magick.NET-Q16-HDRI-AnyCPU.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Magick.NET-Q16-HDRI-AnyCPU.14.2.0\build\netstandard20\Magick.NET-Q16-HDRI-AnyCPU.targets'))"/>
         <Error Condition="!Exists('..\packages\NUnit.4.2.2\build\NUnit.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\NUnit.4.2.2\build\NUnit.props'))"/>
+        <Error Condition="!Exists('..\packages\Magick.NET-Q16-HDRI-AnyCPU.14.2.0\build\netstandard20\Magick.NET-Q16-HDRI-AnyCPU.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Magick.NET-Q16-HDRI-AnyCPU.14.2.0\build\netstandard20\Magick.NET-Q16-HDRI-AnyCPU.targets'))"/>
     </Target>
     <Import Project="..\packages\Magick.NET-Q16-HDRI-AnyCPU.14.2.0\build\netstandard20\Magick.NET-Q16-HDRI-AnyCPU.targets" Condition="Exists('..\packages\Magick.NET-Q16-HDRI-AnyCPU.14.2.0\build\netstandard20\Magick.NET-Q16-HDRI-AnyCPU.targets')"/>
     <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

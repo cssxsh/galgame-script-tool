@@ -75,7 +75,7 @@ namespace Unknown
                     {
                         case ".AQA":
                         {
-                            using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                            using var reader = new BinaryReader(File.OpenRead(path));
                             var scripts = reader.ReadUnknownScriptV2004();
 
                             foreach (var script in scripts)
@@ -99,7 +99,7 @@ namespace Unknown
                             break;
                         case ".DAT":
                         {
-                            using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                            using var reader = new BinaryReader(File.OpenRead(path));
                             var scripts = reader.ReadUnknownScriptV2001();
 
                             foreach (var script in scripts)
@@ -133,7 +133,7 @@ namespace Unknown
                     {
                         case ".AQA":
                         {
-                            using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                            using var reader = new BinaryReader(File.OpenRead(path));
                             var scripts = reader.ReadUnknownScriptV2004();
                             reader.BaseStream.Position = 0x0000_0008;
                             var key = reader.ReadUInt32();
@@ -192,13 +192,13 @@ namespace Unknown
 
                             var filename = path.PatchFileName(_encoding.WebName);
                             Console.WriteLine($"Write {filename}");
-                            using var writer = new BinaryWriter(File.Create(filename), Encoding.ASCII, true);
+                            using var writer = new BinaryWriter(File.Create(filename));
                             writer.WriteUnknownScriptV2004(scripts, key);
                         }
                             break;
                         case ".DAT":
                         {
-                            using var reader = new BinaryReader(File.OpenRead(path), Encoding.ASCII, true);
+                            using var reader = new BinaryReader(File.OpenRead(path));
                             var scripts = reader.ReadUnknownScriptV2001();
 
                             foreach (var script in scripts)
@@ -263,7 +263,7 @@ namespace Unknown
 
                             var filename = path.PatchFileName(_encoding.WebName);
                             Console.WriteLine($"Write {filename}");
-                            using var writer = new BinaryWriter(File.Create(filename), Encoding.ASCII, true);
+                            using var writer = new BinaryWriter(File.Create(filename));
                             writer.WriteUnknownScriptV2001(scripts);
                         }
                             break;
