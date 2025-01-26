@@ -46,6 +46,7 @@
         <Compile Include="CRip.cs"/>
         <Compile Include="CRip007.cs"/>
         <Compile Include="CSbm.cs"/>
+        <Compile Include="ISbm.cs"/>
         <Compile Include="Program.cs"/>
         <Compile Include="Properties\AssemblyInfo.cs"/>
         <Compile Include="Rect.cs"/>

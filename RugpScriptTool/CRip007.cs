@@ -17,16 +17,24 @@ namespace rUGP
             using var reader = new BinaryReader(stream);
 
             Version = reader.ReadUInt32();
-            Width = reader.ReadUInt16();
-            Height = reader.ReadUInt16();
-            ValidateRect = new Rect(reader.ReadUInt16(), reader.ReadUInt16(), reader.ReadUInt16(), reader.ReadUInt16());
-            Flags = reader.ReadUInt32();
-            CompressInfo = reader.ReadBytes(0x07);
-            var node = reader.ReadUInt16();
-            if (node != 0x0000) throw new FormatException("Node != null");
-            var size = reader.ReadInt32();
-            X3C = reader.ReadUInt32();
-            Compressed = reader.ReadBytes(size);
+            switch (Version)
+            {
+                case 0x45:
+                    Width = reader.ReadUInt16();
+                    Height = reader.ReadUInt16();
+                    ValidateRect = new Rect(reader.ReadUInt16(), reader.ReadUInt16(), reader.ReadUInt16(),
+                        reader.ReadUInt16());
+                    Flags = reader.ReadUInt32();
+                    CompressInfo = reader.ReadBytes(0x07);
+                    var node = reader.ReadUInt16();
+                    if (node != 0x0000) throw new FormatException("Node != null");
+                    var size = reader.ReadInt32();
+                    X3C = reader.ReadUInt32();
+                    Compressed = reader.ReadBytes(size);
+                    break;
+                default:
+                    throw new NotSupportedException($"version {Version} not supported");
+            }
         }
 
         public override MagickImage ToImage()
@@ -47,8 +55,12 @@ namespace rUGP
             } ?? throw new FormatException($"unsupported flags: {Flags:X8}");
 
             var image = new MagickImage(data, settings);
-            image.Quality = 100;
             return image;
+        }
+
+        public override void Merge(MagickImage image)
+        {
+            throw new NotImplementedException("CRip007::Merge");
         }
 
         // ?UnCompressRgb001@CRip007@@QBEXPAUIS5i@@PBUtagRBDY@@1@Z
@@ -307,7 +319,19 @@ namespace rUGP
             return output;
         }
 
-        protected int ReadQuantTransfer(ref int position)
+        private int ReadInt(ref int position)
+        {
+            var x = 0x01;
+            while (ReadBit(ref position)) x = (x << 0x01) | (ReadBit(ref position) ? 0x01 : 0x00);
+            return x;
+        }
+
+        private int ReadSigned(ref int position)
+        {
+            return ReadBit(ref position) ? -ReadInt(ref position) : ReadInt(ref position);
+        }
+
+        private int ReadQuantTransfer(ref int position)
         {
             return ReadBit(ref position)
                 ? -TblQuantTransfer[CompressInfo[0], ReadInt(ref position)]

@@ -1,9 +1,10 @@
-﻿using ImageMagick;
+﻿using System;
+using ImageMagick;
 
 namespace rUGP
 {
     // ReSharper disable MemberCanBeProtected.Global
-    public class CSbm
+    public class CSbm : ISbm
     {
         public string Name { protected set; get; }
 
@@ -14,7 +15,12 @@ namespace rUGP
 
         public virtual MagickImage ToImage()
         {
-            return null;
+            throw new NotImplementedException("CSbm::ToImage");
+        }
+
+        public virtual void Merge(MagickImage image)
+        {
+            throw new NotImplementedException("CSbm::Merge");
         }
     }
 }
