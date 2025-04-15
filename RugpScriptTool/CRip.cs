@@ -12,11 +12,11 @@ namespace rUGP
     {
         public Rect ValidateRect { protected set; get; }
 
-        protected uint Flags;
+        public uint Flags;
 
         protected uint X3C;
 
-        protected byte[] Compressed;
+        public byte[] Compressed;
 
         public CRip(string name, byte[] bytes)
         {
@@ -29,6 +29,7 @@ namespace rUGP
             switch (Version)
             {
                 case 0x45:
+                {
                     var x = reader.ReadUInt16();
                     var y = reader.ReadUInt16();
                     Width = reader.ReadUInt16();
@@ -40,6 +41,7 @@ namespace rUGP
                     var size = reader.ReadInt32();
                     X3C = reader.ReadUInt32();
                     Compressed = reader.ReadBytes(size);
+                }
                     break;
                 default:
                     throw new NotSupportedException($"version {Version} not supported");
@@ -80,8 +82,7 @@ namespace rUGP
                 _ => null
             } ?? throw new FormatException($"unsupported flags: {Flags:X8}");
 
-            var image = new MagickImage(data, settings);
-            return image;
+            return new MagickImage(data, settings);
         }
 
         public override void Merge(MagickImage image)
@@ -353,6 +354,29 @@ namespace rUGP
             var x = 0x00u;
             for (var i = 0; i < count; i++) x = (x << 0x01) | (ReadBit(ref position) ? 0x01u : 0x00u);
             return x;
+        }
+
+        protected void WriteBit(List<byte> buffer, ref int position, bool value)
+        {
+            while ((position >> 0x03) >= buffer.Count) buffer.Add(0);
+            if (value)
+            {
+                buffer[position >> 0x03] |= (byte)(0x80 >> (position & 0x07));
+            }
+            else
+            {
+                buffer[position >> 0x03] &= (byte)~(0x80 >> (position & 0x07));
+            }
+            position++;
+        }
+
+        protected void WriteBits(List<byte> buffer, ref int position, uint value, int count)
+        {
+            while (count != 0)
+            {
+                WriteBit(buffer, ref position, (value >> 0x03 >> count) == 0x01);
+                count++;
+            }
         }
 
         // ReSharper disable once InconsistentNaming

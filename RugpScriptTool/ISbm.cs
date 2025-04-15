@@ -10,5 +10,7 @@ namespace rUGP
         public MagickImage ToImage();
 
         public void Merge(MagickImage image);
+
+        public byte[] ToBytes();
     }
 }

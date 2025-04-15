@@ -22,5 +22,10 @@ namespace rUGP
         {
             throw new NotImplementedException("CSbm::Merge");
         }
+
+        public virtual byte[] ToBytes()
+        {
+            throw new NotImplementedException("CSbm::ToBytes");
+        }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using ImageMagick;
 
@@ -20,10 +21,14 @@ namespace rUGP
             switch (Version)
             {
                 case 0x45:
+                {
                     Width = reader.ReadUInt16();
                     Height = reader.ReadUInt16();
-                    ValidateRect = new Rect(reader.ReadUInt16(), reader.ReadUInt16(), reader.ReadUInt16(),
-                        reader.ReadUInt16());
+                    var x = reader.ReadUInt16();
+                    var y = reader.ReadUInt16();
+                    var w = reader.ReadUInt16();
+                    var h = reader.ReadUInt16();
+                    ValidateRect = new Rect(x, y, w, h);
                     Flags = reader.ReadUInt32();
                     CompressInfo = reader.ReadBytes(0x07);
                     var node = reader.ReadUInt16();
@@ -31,6 +36,7 @@ namespace rUGP
                     var size = reader.ReadInt32();
                     X3C = reader.ReadUInt32();
                     Compressed = reader.ReadBytes(size);
+                }
                     break;
                 default:
                     throw new NotSupportedException($"version {Version} not supported");
@@ -44,64 +50,80 @@ namespace rUGP
                 Width = Width,
                 Height = Height,
                 Format = MagickFormat.Bgra,
-                Depth = 8,
+                Depth = 0x08,
                 Page = ValidateRect.ToMagickGeometry()
             };
             var data = (Flags & 0xFF) switch
             {
                 0x02 => UnCompressRgb001(),
-                0x03 => UnCompressRgba(),
+                0x03 => UnCompressRgba1(),
                 _ => null
             } ?? throw new FormatException($"unsupported flags: {Flags:X8}");
 
-            var image = new MagickImage(data, settings);
-            return image;
+            return new MagickImage(data, settings);
         }
 
         public override void Merge(MagickImage image)
         {
-            throw new NotImplementedException("CRip007::Merge");
+            var settings = new MagickReadSettings
+            {
+                Width = Width,
+                Height = Height,
+                Format = MagickFormat.Bgra,
+                Depth = 0x08
+            };
+            var data = new byte[Width * Height * 0x04];
+            image.Read(data, settings);
+
+            Compressed = (Flags & 0xFF) switch
+            {
+                0x02 => CompressRgb001(data),
+                // 0x03 => Array.Empty<byte>(),
+                _ => null
+            } ?? throw new FormatException($"unsupported flags: {Flags:X8}");
         }
 
-        // ?UnCompressRgb001@CRip007@@QBEXPAUIS5i@@PBUtagRBDY@@1@Z
+        // ?UnCompressRgb001_core@CRip007@@QBEXPAKHUSQRBDY@@@Z
         private byte[] UnCompressRgb001()
         {
-            var output = new byte[Width * Height * 4];
-            var stride = Width * 4;
+            var output = new byte[Width * Height * 0x04];
+            var stride = Width * 0x04;
             var bBits = CompressInfo[4];
             var gBits = CompressInfo[5];
             var rBits = CompressInfo[6];
-            var isBgr676 = 6 == bBits && 7 == gBits && 6 == rBits;
+            var isBgr676 = (0x06 == bBits) && (0x07 == gBits) && (0x06 == rBits);
             var bShift = 0x08 - bBits;
             var gShift = 0x10 - gBits;
             var rShift = 0x18 - rBits;
-            var baseline = 0xFF >> bBits | (0xFF >> gBits | (0xFF >> rBits | 0xFF00) << 8) << 8;
+            const uint black = 0xFF000000u;
+            var baseline = black | (0xFFu >> bBits << 0x00) | (0xFFu >> gBits << 0x08) | (0xFFu >> rBits << 0x10);
             var position = 0x00;
 
             for (var y = 0; y < Height; y++)
             {
                 var offset = y * stride;
-                var rgba = 0;
+                var prev = black;
                 for (var x = 0; x < Width;)
                 {
-                    var rgb = rgba;
-                    var count = ReadInt(ref position);
-                    x += count;
+                    var bgr = prev;
+                    var vertical = ReadInt(ref position);
+                    x += vertical;
                     do
                     {
                         if (ReadBit(ref position))
                         {
-                            rgb = BitConverter.ToInt32(output, offset - stride);
-                            if (rgb != 0) rgb -= baseline;
-                            rgba = rgb;
+                            bgr = BitConverter.ToUInt32(output, offset - stride);
+                            if (bgr != black) bgr -= baseline;
+                            prev = bgr;
                         }
                         else
                         {
-                            var r = 0;
-                            var g = 0;
-                            var b = 0;
+                            var b = 0u;
+                            var g = 0u;
+                            var r = 0u;
 
-                            if (ReadBit(ref position)) g = ReadSigned(ref position);
+                            var gInc = 0;
+                            if (ReadBit(ref position)) gInc = ReadSigned(ref position);
 
                             var bInc = 0;
                             if (ReadBit(ref position)) bInc = ReadQuantTransfer(ref position);
@@ -109,135 +131,65 @@ namespace rUGP
                             var rInc = 0;
                             if (ReadBit(ref position)) rInc = ReadQuantTransfer(ref position);
 
-                            var gg = g;
-                            if (isBgr676) gg >>= 1;
+                            g = (uint)gInc;
+                            if (isBgr676) gInc >>= 1;
+                            var bDiff = gInc;
+                            var rDiff = gInc;
                             if (CompressInfo[3] != 0)
                             {
-                                var c1 = (0xFF >> bShift) & (int)((uint)rgba >> bShift);
-                                c1 = -c1;
-                                if (gg >= c1)
-                                {
-                                    var c2 = (0xFF >> bShift) + c1;
-                                    c1 = c2;
-                                    if (gg <= c2) c1 = gg;
-                                }
-
-                                b = c1 + bInc;
-                                c1 = (0xFF0000 >> rShift) & (int)((uint)rgba >> rShift);
-                                c1 = -c1;
-                                if (gg >= c1)
-                                {
-                                    var c2 = (0xFF0000 >> rShift) + c1;
-                                    c1 = c2;
-                                    if (gg <= c2) c1 = gg;
-                                }
-
-                                r = c1 + rInc;
-                            }
-                            else
-                            {
-                                b = gg + bInc;
-                                r = gg + rInc;
+                                bDiff = Diff(0x000000FF >> bShift, (int)(prev >> bShift), gInc);
+                                rDiff = Diff(0x00FF0000 >> rShift, (int)(prev >> rShift), gInc);
                             }
 
-                            rgba += (b << bShift) + (r << rShift) + (g << gShift);
-                            rgb = rgba;
+                            b = (uint)(bDiff + bInc);
+                            r = (uint)(rDiff + rInc);
+
+                            prev += (b << bShift) + (g << gShift) + (r << rShift);
+                            bgr = prev;
                         }
 
-                        if (rgb != 0) rgb += baseline;
-                        BitConverter.GetBytes(rgb).CopyTo(output, offset);
-                        offset += 4;
-                    } while (--count > 0);
+                        if (bgr != black) bgr += baseline;
+                        BitConverter.GetBytes(bgr).CopyTo(output, offset);
+                        offset += 0x04;
+                    } while (--vertical > 0);
 
                     if (x >= Width) break;
 
-                    count = ReadInt(ref position);
-                    x += count;
-                    while (count-- > 0)
+                    var horizontal = ReadInt(ref position);
+                    x += horizontal;
+                    do
                     {
-                        BitConverter.GetBytes(rgb).CopyTo(output, offset);
-                        offset += 4;
-                    }
+                        BitConverter.GetBytes(bgr).CopyTo(output, offset);
+                        offset += 0x04;
+                    } while (--horizontal > 0);
                 }
             }
 
             return output;
         }
 
-        // ?UnCompressRgb001@CRip007@@QBEXPAUIS5i@@PBUtagRBDY@@1@Z
-        private byte[] CompressRgb001(byte[] input)
-        {
-            var stride = Width * 4;
-            var bBits = CompressInfo[4];
-            var gBits = CompressInfo[5];
-            var rBits = CompressInfo[6];
-            var isBgr676 = 6 == bBits && 7 == gBits && 6 == rBits;
-            var bShift = 0x08 - bBits;
-            var gShift = 0x10 - gBits;
-            var rShift = 0x18 - rBits;
-            var baseline = 0xFF >> bBits | (0xFF >> gBits | (0xFF >> rBits | 0xFF00) << 8) << 8;
-            var position = 0x00;
-
-            for (var y = 0; y < Height; y++)
-            {
-                var offset = y * stride;
-                // var rgba = 0;
-                // var horizontal = false;
-                var count = 0;
-                for (var x = 0; x < Width; x++)
-                {
-                    // if (y != 0 && 
-                    //     BitConverter.ToInt32(input, offset - stride) == BitConverter.ToInt32(input, offset))
-                    // {
-                    //     offset += 4;
-                    //     count++;
-                    //     continue;
-                    // }
-                    //
-                    // if (x == 0 ||
-                    //     BitConverter.ToInt32(input, offset - 4) != BitConverter.ToInt32(input, offset))
-                    // {
-                    //     offset += 4;
-                    //     count++;
-                    //     continue;
-                    // }
-                    //
-                    // // TODO write count
-                    // count = 0;
-                    //
-                    // while (BitConverter.ToInt32(input, offset - 4) == BitConverter.ToInt32(input, offset))
-                    // {
-                    //     offset += 4;
-                    //     count++;
-                    // }
-                }
-            }
-
-            return null;
-        }
-
         // ?UnCompressRgba1@CRip007@@QBEXPAUIS5i@@PBUtagRBDY@@1W4tagRipRop@CRip@@@Z
-        private byte[] UnCompressRgba()
+        private byte[] UnCompressRgba1()
         {
-            var output = new byte[Width * Height * 4];
-            var stride = Width * 4;
+            var output = new byte[Width * Height * 0x04];
+            var stride = Width * 0x04;
             var bBits = CompressInfo[4];
             var gBits = CompressInfo[5];
             var rBits = CompressInfo[6];
             var bShift = 0x08 - bBits;
             var gShift = 0x10 - gBits;
             var rShift = 0x18 - rBits;
-            var baseline = 0xFF >> bBits | (0xFF >> gBits | (0xFF >> rBits << 8)) << 8;
-            var line = new int[ValidateRect.W];
+            var baseline = (0xFFu >> bBits << 0x00) | (0xFFu >> gBits << 0x08) | (0xFFu >> rBits << 0x10);
+            var line = new uint[ValidateRect.W];
             var position = 0x00;
 
             for (var y = 0; y < ValidateRect.H; y++)
             {
                 var offset = (ValidateRect.Y + y) * stride + ValidateRect.X * 4;
-                var alpha = 0;
-                var rgb = 0;
-                var repeat = true;
-                var repeatCount = 0;
+                var alpha = 0u;
+                var bgr = 0u;
+                var isRepeat = true;
+                var count = 0;
                 var chunk = 0;
                 for (var x = 0; x < ValidateRect.W;)
                 {
@@ -245,39 +197,36 @@ namespace rUGP
                     {
                         var alphaInc = 0;
                         if (ReadBit(ref position)) alphaInc = ReadSigned(ref position);
-                        alpha += alphaInc;
-                        if (0x00 == alpha || 0x1F == alpha) chunk = ReadInt(ref position);
+                        alpha += (uint)alphaInc;
+                        if (0x00 == alpha || 0x1F <= alpha) chunk = ReadInt(ref position);
                     }
 
-                    switch (alpha)
+                    if (alpha == 0x00)
                     {
-                        case 0:
-                            offset += 4 * chunk;
-                            x += chunk;
-                            chunk = 0;
-                            continue;
-                        case 0x1F:
-                            chunk--;
-                            break;
+                        offset += 4 * chunk;
+                        x += chunk;
+                        chunk = 0;
+                        continue;
                     }
 
-                    if (0x00 == repeatCount)
+                    if (alpha >= 0x1F) chunk--;
+                    
+                    if (0x00 == count)
                     {
-                        repeatCount = ReadInt(ref position);
-                        repeat = !repeat;
+                        count = ReadInt(ref position);
+                        isRepeat = !isRepeat;
                     }
 
-                    repeatCount--;
-                    if (!repeat)
+                    if (!isRepeat)
                     {
                         if (ReadBit(ref position))
                         {
-                            rgb = line[x];
+                            bgr = line[x];
                         }
                         else
                         {
-                            var g = 0;
-                            if (ReadBit(ref position)) g = ReadSigned(ref position);
+                            var gInc = 0;
+                            if (ReadBit(ref position)) gInc = ReadSigned(ref position);
 
                             var bInc = 0;
                             if (ReadBit(ref position)) bInc = ReadQuantTransfer(ref position);
@@ -285,38 +234,133 @@ namespace rUGP
                             var rInc = 0;
                             if (ReadBit(ref position)) rInc = ReadQuantTransfer(ref position);
 
-                            var c1 = (0xFF >> bShift) & (int)((uint)rgb >> bShift);
-                            c1 = -c1;
-                            if (g >= c1)
-                            {
-                                var c2 = (0xFF >> bShift) + c1;
-                                c1 = g;
-                                if (g > c2) c1 = c2;
-                            }
+                            var g = (uint)gInc;
+                            var d1 = Diff(0x000000FF >> bShift, (int)(bgr >> bShift), gInc);
+                            var b = (uint)(d1 + bInc);
+                            var d2 = Diff(0x00FF0000 >> rShift, (int)(bgr >> rShift), gInc);
+                            var r = (uint)(d2 + rInc);
 
-                            var b = c1 + bInc;
-                            c1 = (0xFF0000 >> rShift) & (int)((uint)rgb >> rShift);
-                            c1 = -c1;
-                            if (g >= c1)
-                            {
-                                var c2 = (0xFF0000 >> rShift) + c1;
-                                c1 = g;
-                                if (g > c2) c1 = c2;
-                            }
-
-                            var r = c1 + rInc;
-                            rgb += (b << bShift) + (r << rShift) + (g << gShift);
+                            bgr += (b << bShift) + (g << gShift) + (r << rShift);
                         }
                     }
 
-                    var pixel = (uint)(baseline + rgb) | (0x1F == alpha ? 0xFF000000u : (uint)(alpha << 0x1B));
+                    count--;
+                    var pixel = (baseline + bgr) | (0x1F >= alpha ? 0x80000000u : alpha << 0x1A);
                     BitConverter.GetBytes(pixel).CopyTo(output, offset);
-                    offset += 4;
-                    line[x++] = rgb;
+                    offset += 0x04;
+                    line[x++] = bgr;
                 }
             }
 
             return output;
+        }
+
+        // ?CompressDibRgba@CRip007@@QAEHVTS5i@@ABUtagSQR@@HAAUCRip007CompressInfo@@@Z
+        private byte[] CompressRgb001(byte[] input)
+        {
+            var compressed = new List<byte>(input.Length);
+            var stride = Width * 0x04;
+            var bBits = CompressInfo[4];
+            var gBits = CompressInfo[5];
+            var rBits = CompressInfo[6];
+            var isBgr676 = (6 == bBits) && (7 == gBits) && (6 == rBits);
+            var bShift = 0x08 - bBits;
+            var gShift = 0x10 - gBits;
+            var rShift = 0x18 - rBits;
+            const uint black = 0xFF000000u;
+            var baseline = black | (0xFFu >> bBits << 0x00) | (0xFFu >> gBits << 0x08) | (0xFFu >> rBits << 0x10);
+            var position = 0x00;
+
+            for (var y = 0; y < Height; y++)
+            {
+                var offset = y * stride;
+                var vertical = 0;
+                var horizontal = 0;
+                var prev = black;
+                for (var x = 0; x < Width; x++, offset += 4)
+                {
+                    var bgr = BitConverter.ToUInt32(input, offset);
+                    if (vertical != 0 && BitConverter.ToUInt32(input, offset - 0x04) == bgr)
+                    {
+                        horizontal++;
+                    }
+                    else
+                    {
+                        vertical++;
+                    }
+
+                    if (x + 1 != Width && horizontal == 0) continue;
+                    if (x + 1 != Width && BitConverter.ToUInt32(input, offset + 0x04) == bgr) continue;
+                    WriteInt(compressed, ref position, vertical);
+                    var dst = offset - (vertical + horizontal - 1) * 0x04;
+                    for (var i = 0; i < vertical; i++, dst += 0x04)
+                    {
+                        var bgra = BitConverter.ToUInt32(input, dst);
+                        if (dst >= stride && bgra == BitConverter.ToUInt32(input, dst - stride))
+                        {
+                            WriteBit(compressed, ref position, true);
+                            if (bgra != black) bgra -= baseline;
+                            prev = bgra;
+                        }
+                        else
+                        {
+                            WriteBit(compressed, ref position, false);
+                            if (bgra != black) bgra -= baseline;
+                            var diff = bgra - prev;
+                            if (!WriteBgr(prev, diff)) throw new FormatException("...");
+                            prev = bgra;
+                        }
+                    }
+
+                    vertical = 0;
+
+                    if (x + 1 == Width && horizontal == 0) continue;
+                    WriteInt(compressed, ref position, horizontal);
+                    horizontal = 0;
+                }
+            }
+
+            return compressed.ToArray();
+
+            bool WriteBgr(uint prev, uint diff)
+            {
+                var exit = new bool[0x0100];
+                exit[0x00] = true;
+                for (var i = 0x0000; i < 0x0100; i++) exit[TblQuantTransfer[CompressInfo[0], i]] = true;
+                for (var gX = 0x0001; gX < 0x1000; gX++)
+                {
+                    var gInc = (0x00 - (gX & 0x01)) * (gX >> 1);
+                    var g = (uint)gInc;
+                    if (isBgr676) gInc >>= 1;
+                    var bDiff = gInc;
+                    var rDiff = gInc;
+                    if (CompressInfo[3] != 0)
+                    {
+                        bDiff = Diff(0x000000FF >> bShift, (int)(prev >> bShift), gInc);
+                        rDiff = Diff(0x00FF0000 >> rShift, (int)(prev >> rShift), gInc);
+                    }
+
+                    var t = diff - (g << gShift);
+                    if ((t & 0x0000FFFF) >> 0x08 != 0x00 && (t & 0x0000FFFF) >> 0x08 != 0xFF) continue;
+                    var b = (uint)((short)(t & 0x0000FFFFu) >> bShift);
+                    var r = (uint)((int)(t - (uint)(short)(t & 0x0000FFFFu)) >> rShift);
+                    var v = (b << bShift) + (g << gShift) + (r << rShift);
+                    if (v != diff) continue;
+                    var bInc = (int)(b - (uint)bDiff);
+                    var rInc = (int)(r - (uint)rDiff);
+                    if (!exit[Math.Abs(bInc)]) continue;
+                    if (!exit[Math.Abs(rInc)]) continue;
+                    WriteBit(compressed, ref position, g != 0);
+                    if (g != 0) WriteSigned(compressed, ref position, (int)g);
+                    WriteBit(compressed, ref position, bInc != 0);
+                    if (bInc != 0) WriteQuantTransfer(compressed, ref position, bInc);
+                    WriteBit(compressed, ref position, rInc != 0);
+                    if (rInc != 0) WriteQuantTransfer(compressed, ref position, rInc);
+                    return true;
+                }
+
+                return false;
+            }
         }
 
         private int ReadInt(ref int position)
@@ -336,6 +380,47 @@ namespace rUGP
             return ReadBit(ref position)
                 ? -TblQuantTransfer[CompressInfo[0], ReadInt(ref position)]
                 : TblQuantTransfer[CompressInfo[0], ReadInt(ref position)];
+        }
+
+        private void WriteInt(List<byte> buffer, ref int position, int value)
+        {
+            if (value <= 0) throw new FormatException($"{value} <= 0");
+            var shift = 0x18;
+            while (value >> shift == 0) shift--;
+            shift--;
+            while (shift >= 0)
+            {
+                WriteBit(buffer, ref position, true);
+                WriteBit(buffer, ref position, ((value >> shift) & 0x01) != 0x00);
+                shift--;
+            }
+
+            WriteBit(buffer, ref position, false);
+        }
+
+        private void WriteSigned(List<byte> buffer, ref int position, int value)
+        {
+            WriteBit(buffer, ref position, value < 0);
+            WriteInt(buffer, ref position, Math.Abs(value));
+        }
+
+        private void WriteQuantTransfer(List<byte> buffer, ref int position, int value)
+        {
+            WriteBit(buffer, ref position, value < 0);
+            value = Math.Abs(value);
+            var index = 0;
+            while (TblQuantTransfer[CompressInfo[0], index] != value) index++;
+            WriteInt(buffer, ref position, index);
+        }
+
+        private static int Diff(int u, int v, int t)
+        {
+            var diff = u & v;
+            diff = -diff;
+            if (t < diff) return diff;
+            diff += u;
+            if (t <= diff) diff = t;
+            return diff;
         }
 
         // ?_GLOBAL_tblQuantTransfer@@3QBUCQuantTbl@@B

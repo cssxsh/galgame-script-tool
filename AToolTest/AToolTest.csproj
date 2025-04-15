@@ -90,6 +90,10 @@
             <Project>{b78a8c91-7f4b-40a0-94e8-76b4f357677e}</Project>
             <Name>IkuraScriptTool</Name>
         </ProjectReference>
+        <ProjectReference Include="..\RugpScriptTool\RugpScriptTool.csproj">
+            <Project>{996f36af-03e4-4521-ac52-bf2524ea05e7}</Project>
+            <Name>RugpScriptTool</Name>
+        </ProjectReference>
         <ProjectReference Include="..\TamaSoftScriptTool\TamaSoftScriptTool.csproj">
             <Project>{ff439d9a-8894-42aa-b129-5095cee2569a}</Project>
             <Name>TamaSoftScriptTool</Name>
