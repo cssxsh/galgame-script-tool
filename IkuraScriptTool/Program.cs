@@ -201,10 +201,10 @@ namespace Ikura
                     break;
                 default:
                     Console.WriteLine("Usage:");
-                    Console.WriteLine("  Export text : IkuraScriptTool -e [ISF] [encoding]");
-                    Console.WriteLine("  Import text : IkuraScriptTool -i [ISF] [encoding]");
-                    Console.WriteLine("  Export text : IkuraScriptTool -E [SNR] [encoding]");
-                    Console.WriteLine("  Import text : IkuraScriptTool -I [SNR] [encoding]");
+                    Console.WriteLine("  Export ISF text : IkuraScriptTool -e [ISF] [encoding]");
+                    Console.WriteLine("  Import ISF text : IkuraScriptTool -i [ISF] [encoding]");
+                    Console.WriteLine("  Export SNR text : IkuraScriptTool -E [SNR] [encoding]");
+                    Console.WriteLine("  Import SNR text : IkuraScriptTool -I [SNR] [encoding]");
                     Console.WriteLine("Press any key to continue...");
                     Console.ReadKey();
                     return;
