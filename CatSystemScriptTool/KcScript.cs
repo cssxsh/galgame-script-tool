@@ -13,11 +13,11 @@ namespace CatSystem
     public class KcScript
     {
         public readonly string Name;
-        
+
         public readonly uint X20;
-        
+
         public readonly uint X24;
-        
+
         public readonly uint X30;
 
         public readonly byte[] Code;
@@ -83,6 +83,7 @@ namespace CatSystem
                     zlib.Write(offset);
                     zlib.Write(Texts[i].Key);
                 }
+
                 for (var i = 0x00; i < Texts.Length; i++)
                 {
                     zlib.Write(Texts[i].Value);
@@ -90,7 +91,7 @@ namespace CatSystem
                     offset += Texts[i].Value.Length + 0x02;
                 }
             }
-            
+
             var size = (int)stream.Position;
             stream.Position = 0x0000_0000;
             writer.Write("KCS\0");
