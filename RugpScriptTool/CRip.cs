@@ -87,27 +87,13 @@ namespace rUGP
 
         public override void Merge(MagickImage image)
         {
-            var settings = new MagickReadSettings
+            var data = image.ToByteArray((Flags & 0xFF) switch
             {
-                Width = Width,
-                Height = Height,
-                Format = (Flags & 0xFF) switch
-                {
-                    0x01 => MagickFormat.Gray,
-                    0x02 => MagickFormat.Bgra, // BGRx
-                    0x03 => MagickFormat.Bgra,
-                    _ => throw new FormatException($"unsupported flags: {Flags:X8}"),
-                },
-                Depth = 8
-            };
-            var data = (Flags & 0xFF) switch
-            {
-                0x01 => new byte[Width * Height * 1],
-                0x02 => new byte[Width * Height * 4],
-                0x03 => new byte[Width * Height * 4],
-                _ => null
-            } ?? throw new FormatException($"unsupported flags: {Flags:X8}");
-            image.Read(data, settings);
+                0x01 => MagickFormat.Gray,
+                0x02 => MagickFormat.Bgra, // BGRx
+                0x03 => MagickFormat.Bgra,
+                _ => throw new FormatException($"unsupported flags: {Flags:X8}"),
+            });
 
             Compressed = (Flags & 0xFF) switch
             {
